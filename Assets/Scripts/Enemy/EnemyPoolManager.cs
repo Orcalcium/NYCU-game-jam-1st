@@ -15,6 +15,12 @@ public class EnemyPoolManager : MonoBehaviour
     public Transform player;
     public float spawnInterval = 2.5f;
 
+    [Header("Spawn Anti-Overlap")]
+    public LayerMask enemyLayer;
+    public float spawnClearRadius = 0.7f;
+    public int spawnTryCount = 20;
+    public float spawnJitterRadius = 0.6f;
+
     readonly List<EnemyShooter2D> pool = new();
     float spawnTimer;
 
@@ -24,7 +30,6 @@ public class EnemyPoolManager : MonoBehaviour
         {
             EnemyShooter2D e = Instantiate(enemyPrefab, transform);
             e.gameObject.SetActive(false);
-            e.target = player;
             pool.Add(e);
         }
     }
@@ -46,46 +51,50 @@ public class EnemyPoolManager : MonoBehaviour
         EnemyShooter2D e = GetInactiveEnemy();
         if (e == null) return;
 
-        Transform sp = spawnPoints[Random.Range(0, spawnPoints.Length)];
-        e.transform.position = sp.position;
-
-        // ★ 隨機指定初始元素
-        ElementType randElement = GetRandomElement();
-        e.currentElement = randElement;
-        e.ApplyElementVisual();
+        Vector2 spawnPos;
+        if (!TryFindNonOverlappingSpawn(out spawnPos)) return;
 
         e.gameObject.SetActive(true);
+        e.ResetFromPool(player, spawnPos, ElementType.Fire);
+    }
+
+    bool TryFindNonOverlappingSpawn(out Vector2 spawnPos)
+    {
+        spawnPos = Vector2.zero;
+        if (spawnPoints == null || spawnPoints.Length == 0) return false;
+
+        LayerMask mask = enemyLayer.value != 0 ? enemyLayer : (1 << gameObject.layer);
+
+        for (int i = 0; i < spawnTryCount; i++)
+        {
+            Transform sp = spawnPoints[Random.Range(0, spawnPoints.Length)];
+            Vector2 basePos = sp.position;
+
+            Vector2 jitter = Random.insideUnitCircle * spawnJitterRadius;
+            Vector2 p = basePos + jitter;
+
+            if (Physics2D.OverlapCircle(p, spawnClearRadius, mask) == null)
+            {
+                spawnPos = p;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     EnemyShooter2D GetInactiveEnemy()
     {
-        foreach (var e in pool)
-        {
-            if (!e.gameObject.activeSelf)
-                return e;
-        }
+        for (int i = 0; i < pool.Count; i++)
+            if (!pool[i].gameObject.activeSelf) return pool[i];
         return null;
     }
 
     int GetAliveCount()
     {
         int c = 0;
-        foreach (var e in pool)
-        {
-            if (e.gameObject.activeSelf) c++;
-        }
+        for (int i = 0; i < pool.Count; i++)
+            if (pool[i].gameObject.activeSelf) c++;
         return c;
-    }
-
-    ElementType GetRandomElement()
-    {
-        // 僅使用三屬性
-        ElementType[] elements =
-        {
-            ElementType.Fire,
-            ElementType.Water,
-            ElementType.Nature
-        };
-        return elements[Random.Range(0, elements.Length)];
     }
 }

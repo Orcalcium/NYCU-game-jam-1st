@@ -31,7 +31,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     Rigidbody2D rb;
     Camera cam;
 
-    ElementCycle elementCycle;
     float dashTimer;
     float dashCd;
     float fireCd;
@@ -42,6 +41,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     Vector2 dashTargetPos;
     bool dashUseTarget;
 
+    // 固定 R_G_B（你專案的對應：Fire/Water/Nature）
+    static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
+    int cycleIndex;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -51,11 +54,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         cam = Camera.main;
 
         if (bodyRenderer == null) bodyRenderer = GetComponentInChildren<SpriteRenderer>(true);
-        elementCycle = GetComponent<ElementCycle>();
-        if (elementCycle == null) elementCycle = gameObject.AddComponent<ElementCycle>();
 
         if (firePoint == null) firePoint = transform;
 
+        cycleIndex = GetCycleIndex(currentElement);
+        currentElement = Cycle[cycleIndex];
         ApplyElementVisual();
     }
 
@@ -142,7 +145,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     {
         if (Keyboard.current == null) return;
 
-        if (Keyboard.current.leftShiftKey.wasPressedThisFrame || Keyboard.current.rightShiftKey.wasPressedThisFrame)
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             if (dashCd > 0f) return;
 
@@ -169,8 +172,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                 dashDir = dist > 1e-6f ? (toMouse / dist) : Vector2.right;
                 dashTargetPos = start + dashDir * dashMaxDistance;
             }
-
-            Debug.Log("[Player] Dash -> Mouse Direction with Range");
         }
     }
 
@@ -183,9 +184,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (fireCd > 0f) return;
             fireCd = fireCooldown;
 
-            ElementType shotElement = elementCycle.Next();
-            currentElement = shotElement;
-            ApplyElementVisual();
+            // 先用「當前顏色」射出子彈
+            ElementType shotElement = currentElement;
 
             Vector2 pos = firePoint != null ? (Vector2)firePoint.position : (Vector2)transform.position;
             Vector2 dir = GetAimDirection(pos);
@@ -193,7 +193,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (bulletPool != null)
                 bulletPool.Spawn(pos, dir, shotElement, this, bulletSpeed);
 
-            Debug.Log($"[Player] Shoot -> Element={GameDefs.ElementToText(shotElement)} (Player becomes same)");
+            // 射完後固定切到下一個（R->G->B->R...）
+            cycleIndex = (cycleIndex + 1) % Cycle.Length;
+            currentElement = Cycle[cycleIndex];
+            ApplyElementVisual();
         }
     }
 
@@ -229,6 +232,13 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         bodyRenderer.color = GameDefs.ElementToColor(currentElement);
     }
 
+    int GetCycleIndex(ElementType e)
+    {
+        for (int i = 0; i < Cycle.Length; i++)
+            if (Cycle[i] == e) return i;
+        return 0;
+    }
+
     public bool CanBeHitBy(ElementType element, Object source)
     {
         if (invulnerable) return false;
@@ -241,7 +251,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         if (!CanBeHitBy(element, source)) return;
 
         hp -= damage;
-        Debug.Log($"[Player] Hit by {GameDefs.ElementToText(element)} dmg={damage} hp={hp}");
 
         if (hp <= 0)
         {

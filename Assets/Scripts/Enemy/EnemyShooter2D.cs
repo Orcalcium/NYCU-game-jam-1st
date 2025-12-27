@@ -3,6 +3,7 @@ using UnityEngine;
 using GameJam.Common;
 
 [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Collider2D))]
 public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 {
     [Header("Target")]
@@ -19,24 +20,60 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
     [Header("State")]
     public ElementType currentElement = ElementType.Fire;
-    public int hp = 3;
+
+    [Header("Weakpoints")]
+    public int weakpointCount = 3;
+    public EnemyWeakpointDots weakpointDots;
+    public SpriteRenderer weakpointDotPrefab;
 
     [Header("Visual")]
     public SpriteRenderer bodyRenderer;
 
+    [Header("Anti-Overlap (Position Push)")]
+    public float pushMinDistance = 0.9f;
+    public float pushStrength = 6.0f;
+    public float pushMaxSpeed = 3.5f;
+    public int pushNeighborsLimit = 12;
+
     Rigidbody2D rb;
+    Collider2D col;
+
+    float fireCd;
     bool dead;
+
+    ElementType[] weakSequence;
+    int weakIndex;
+
+    static EnemyShooter2D[] allEnemiesCache = new EnemyShooter2D[0];
+    static int allEnemiesCacheFrame = -1;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
         rb.linearDamping = 8f;
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+        col = GetComponent<Collider2D>();
+        col.isTrigger = true;
 
         if (bodyRenderer == null) bodyRenderer = GetComponentInChildren<SpriteRenderer>(true);
         
         // Get particle system from children if not assigned
         if (particleSystem == null) particleSystem = GetComponentInChildren<ParticleSystem>(true);
+
+        if (weakpointDots == null)
+        {
+            weakpointDots = GetComponentInChildren<EnemyWeakpointDots>(true);
+            if (weakpointDots == null)
+            {
+                var go = new GameObject("WeakpointDots");
+                go.transform.SetParent(transform, false);
+                weakpointDots = go.AddComponent<EnemyWeakpointDots>();
+            }
+        }
+
+        if (weakpointDotPrefab != null) weakpointDots.dotPrefab = weakpointDotPrefab;
 
         ApplyElementVisual();
     }
@@ -54,20 +91,79 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         float minStop = Mathf.Max(0.01f, stopDistance - keepDistance);
         float maxStop = stopDistance + keepDistance;
 
+        Vector2 desired;
         if (dist > maxStop)
         {
-            Vector2 dir = to / dist;
-            rb.linearVelocity = dir * moveSpeed;
+            desired = to / Mathf.Max(1e-6f, dist);
         }
         else if (dist < minStop)
         {
-            Vector2 dir = dist > 1e-6f ? (-to / dist) : Vector2.zero;
-            rb.linearVelocity = dir * (moveSpeed * 0.6f);
+            desired = dist > 1e-6f ? (-to / dist) : Vector2.zero;
+            desired *= 0.6f;
         }
         else
         {
-            rb.linearVelocity = Vector2.zero;
+            desired = Vector2.zero;
         }
+
+        Vector2 v = desired * moveSpeed;
+
+        // ★ 座標推開：不做 Physics overlap / distance 計算
+        v += ComputePositionPush(pos);
+
+        float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
+        if (v.sqrMagnitude > maxSpd * maxSpd) v = v.normalized * maxSpd;
+
+        rb.linearVelocity = v;
+    }
+
+    Vector2 ComputePositionPush(Vector2 pos)
+    {
+        if (Time.frameCount != allEnemiesCacheFrame)
+        {
+            allEnemiesCache = FindObjectsOfType<EnemyShooter2D>(false);
+            allEnemiesCacheFrame = Time.frameCount;
+        }
+
+        float minDist = Mathf.Max(0.01f, pushMinDistance);
+        float minDist2 = minDist * minDist;
+
+        Vector2 push = Vector2.zero;
+        int used = 0;
+
+        for (int i = 0; i < allEnemiesCache.Length; i++)
+        {
+            var e = allEnemiesCache[i];
+            if (e == null) continue;
+            if (e == this) continue;
+            if (!e.gameObject.activeInHierarchy) continue;
+            if (e.dead) continue;
+
+            Vector2 otherPos = e.rb != null ? e.rb.position : (Vector2)e.transform.position;
+            Vector2 diff = pos - otherPos;
+            float d2 = diff.sqrMagnitude;
+
+            if (d2 < 1e-6f)
+            {
+                diff = Random.insideUnitCircle.normalized * 0.001f;
+                d2 = diff.sqrMagnitude;
+            }
+
+            if (d2 >= minDist2) continue;
+
+            float d = Mathf.Sqrt(d2);
+            float t = (minDist - d) / minDist;
+
+            push += (diff / d) * t;
+            used++;
+
+            if (used >= pushNeighborsLimit) break;
+        }
+
+        if (used == 0) return Vector2.zero;
+
+        push /= used;
+        return push * pushStrength;
     }
 
     void OnParticleCollision(GameObject other)
@@ -99,6 +195,78 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         }
     }
 
+    public void ResetFromPool(Transform newTarget, Vector2 spawnPos, ElementType _ignored)
+    {
+        target = newTarget;
+        transform.position = spawnPos;
+
+        dead = false;
+        fireCd = 0f;
+
+        if (col != null) col.enabled = true;
+
+        rb.simulated = true;
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.constraints = RigidbodyConstraints2D.None;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        rb.WakeUp();
+
+        if (bodyRenderer != null) bodyRenderer.enabled = true;
+
+        BuildWeakpoints();
+
+        // 生成後先推開一次（只用座標比對）
+        rb.position += ComputePositionPush(rb.position) * Time.fixedDeltaTime;
+    }
+
+    void BuildWeakpoints()
+    {
+        weakSequence = GetShuffledTriElements();
+        weakIndex = 0;
+
+        currentElement = weakSequence[0];
+        ApplyElementVisual();
+
+        if (weakpointDots != null)
+        {
+            weakpointDots.dotCount = weakSequence.Length;
+            weakpointDots.Build(weakSequence);
+            weakpointDots.Refresh(0);
+        }
+    }
+
+    ElementType[] GetShuffledTriElements()
+    {
+        ElementType[] arr =
+        {
+            ElementType.Fire,
+            ElementType.Water,
+            ElementType.Nature
+        };
+
+        for (int i = arr.Length - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (arr[i], arr[j]) = (arr[j], arr[i]);
+        }
+
+        return arr;
+    }
+
+    void OnDisable()
+    {
+        dead = false;
+        fireCd = 0f;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+        if (col != null) col.enabled = true;
+        if (bodyRenderer != null) bodyRenderer.enabled = true;
+    }
+
     public bool CanBeHitBy(ElementType element, Object source)
     {
         // Can be hit by any element (including same color) as long as not dead
@@ -108,18 +276,24 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public void TakeElementHit(ElementType element, int damage, Object source)
     {
         if (!CanBeHitBy(element, source)) return;
+        if (weakSequence == null || weakSequence.Length == 0) return;
 
-        hp -= damage;
+        if (element != currentElement) return;
 
-        // Change element when hit
-        currentElement = element;
-        ApplyElementVisual();
+        weakIndex++;
 
-        if (hp <= 0 && !dead)
+        if (weakpointDots != null)
+            weakpointDots.Refresh(weakIndex);
+
+        if (weakIndex < weakSequence.Length)
         {
-            dead = true;
-            rb.linearVelocity = Vector2.zero;
-            gameObject.SetActive(false);
+            currentElement = weakSequence[weakIndex];
+            ApplyElementVisual();
+            return;
         }
+
+        dead = true;
+        rb.linearVelocity = Vector2.zero;
+        gameObject.SetActive(false);
     }
 }

@@ -324,7 +324,7 @@ MonoBehaviour:
   bulletPool: {fileID: 569023550}
   firePoint: {fileID: 556756410}
   bulletSpeed: 14
-  fireCooldown: 0.12
+  fireCooldown: 0.5
   currentElement: 0
   hp: 5
   bodyRenderer: {fileID: 0}
