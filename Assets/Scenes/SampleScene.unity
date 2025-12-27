@@ -220,8 +220,10 @@ GameObject:
   m_Component:
   - component: {fileID: 556756410}
   - component: {fileID: 556756409}
+  - component: {fileID: 556756411}
+  - component: {fileID: 556756412}
   m_Layer: 0
-  m_Name: Circle
+  m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -301,6 +303,105 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &556756411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 556756408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: baa63bbe023bc2d439a4e828b9f3d6ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterMovementControll
+  followSpeed: 12
+  stopDistance: 0.03
+  useMoveTowards: 1
+  holdSlowTimeScale: 0.25
+  timeScaleReturnSpeed: 8
+  slowAffectsFollow: 1
+  followSlowMultiplier: 0.35
+  aimPivot: {fileID: 0}
+  faceByRotation2D: 1
+  defaultFacing: {x: 1, y: 0}
+  attack: {fileID: 556756412}
+--- !u!114 &556756412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 556756408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de17c9e106bcb8844b23b2714488035e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerElementAttack
+  attackCooldown: 0.35
+--- !u!1 &872511014
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 872511015}
+  - component: {fileID: 872511016}
+  - component: {fileID: 872511017}
+  m_Layer: 0
+  m_Name: MonsterSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &872511015
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 872511014}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &872511016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 872511014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c00315fd7a2c0c4cba60ff128c007c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterPool
+  prefab: {fileID: 1099583426431736013, guid: afec2f95ba90a3a46a436823a61d40af, type: 3}
+  prewarmCount: 12
+--- !u!114 &872511017
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 872511014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fddce492d270424ebb116b01150b8c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterSpawner
+  pool: {fileID: 872511016}
+  player: {fileID: 556756410}
+  spawnInterval: 1.2
+  spawnRadius: 6
 --- !u!1 &1940334090
 GameObject:
   m_ObjectHideFlags: 0
@@ -445,3 +546,4 @@ SceneRoots:
   - {fileID: 1940334093}
   - {fileID: 556756410}
   - {fileID: 189590615}
+  - {fileID: 872511015}
