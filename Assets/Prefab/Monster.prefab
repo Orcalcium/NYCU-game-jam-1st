@@ -139,6 +139,10 @@ MonoBehaviour:
   stopDistance: 6.5
   keepDistance: 0.25
   moveSpeed: 3.6
+  moveTrigger: 3
+  activationDistance: 6
+  activationMinDistance: 5
+  activationMaxDistance: 20
   particleSystem: {fileID: 0}
   particleDamage: 1
   currentElement: 0
@@ -150,6 +154,9 @@ MonoBehaviour:
   pushStrength: 6
   pushMaxSpeed: 3.5
   pushNeighborsLimit: 12
+  separationPriority: 1
+  separationPriorityThreshold: 0.01
+  separationMaxSpeed: 0
 --- !u!61 &-1067676966206754780
 BoxCollider2D:
   m_ObjectHideFlags: 0

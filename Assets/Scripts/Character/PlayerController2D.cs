@@ -30,7 +30,9 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     [Header("Camera")]
     public float cameraDamping = 1f;
-    public float cameraOrthoSize = 5f;
+    public float cameraOrthoSize = 8f;
+    [Tooltip("If enabled, Player will automatically configure Main Camera to follow the player at Awake(). Disabled by default so you can assign/adjust the camera manually.")]
+    public bool autoSetupCamera = false;
 
     Rigidbody2D rb;
     Camera cam;
@@ -69,14 +71,19 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
 
-        Camera mainCam = Camera.main;
-        if (mainCam != null)
+        // Automatic camera setup is disabled by default. Enable `autoSetupCamera`
+        // in the Inspector if you want the Player to configure Main Camera at Awake().
+        if (autoSetupCamera)
         {
-            var cf = mainCam.GetComponent<CameraFollow2D>();
-            if (cf == null) cf = mainCam.gameObject.AddComponent<CameraFollow2D>();
-            cf.target = transform;
-            cf.smoothTime = cameraDamping;
-            mainCam.orthographicSize = cameraOrthoSize;
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                var cf = mainCam.GetComponent<CameraFollow2D>();
+                if (cf == null) cf = mainCam.gameObject.AddComponent<CameraFollow2D>();
+                cf.target = transform;
+                cf.smoothTime = cameraDamping;
+                mainCam.orthographicSize = cameraOrthoSize;
+            }
         }
 
         var drag = GetComponent<MovementDragEffect>();
