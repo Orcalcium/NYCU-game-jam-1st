@@ -1,11 +1,16 @@
 // File: Combat/EnemyShooter2D.cs
+using System;
 using UnityEngine;
 using GameJam.Common;
+using Random = UnityEngine.Random;
+using Object = UnityEngine.Object;
 
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Collider2D))]
 public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 {
+    public event Action<Color> ChangeColor;
+
     [Header("Target")]
     public Transform target;
     public float stopDistance = 6.5f;
@@ -196,6 +201,8 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
             var main = particleSystem.main;
             main.startColor = GameDefs.ElementToColor(currentElement);
         }
+
+        ChangeColor?.Invoke(GameDefs.ElementToColor(currentElement));
     }
 
     public void ResetFromPool(Transform newTarget, Vector2 spawnPos, ElementType _ignored)
