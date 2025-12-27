@@ -498,11 +498,12 @@ MonoBehaviour:
     m_Bits: 0
   damageLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   currentSkill: 0
   pierceBulletSpeed: 14
   pierceDamage: 1
   pierceCooldown: 0.12
+  pierceMaxHits: -1
   blinkMaxDistance: 6.5
   blinkHitRadius: 0.35
   blinkDamage: 2
