@@ -13,7 +13,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
     [Header("Move")]
     [Tooltip("Base move speed for this enemy (lower is slower)")]
-    public float moveSpeed = 2.2f; // lowered default speed
+    public float moveSpeed = 2.2f;
 
     public enum MoveTriggerMode { Always, MoveWhenCloserThan, MoveWhenFartherThan, MoveWhenBetween }
 
@@ -95,7 +95,24 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         if (weakpointDotPrefab != null) weakpointDots.dotPrefab = weakpointDotPrefab;
 
+        EnsureParticleBroadcasters();
+
         ApplyElementVisual();
+    }
+
+    void EnsureParticleBroadcasters()
+    {
+        var systems = GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+        {
+            var ps = systems[i];
+            if (ps == null) continue;
+
+            var b = ps.GetComponent<EnemyParticleHitBroadcaster>();
+            if (b == null) b = ps.gameObject.AddComponent<EnemyParticleHitBroadcaster>();
+            b.owner = this;
+            b.particleDamage = particleDamage;
+        }
     }
 
     void FixedUpdate()
@@ -210,19 +227,9 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         return push * pushStrength;
     }
 
-    void OnParticleCollision(GameObject other)
+    public void OnEnemyParticleHit(GameObject other)
     {
-        if (dead) return;
-
-        IElementDamageable damageable = other.GetComponent<IElementDamageable>();
-        if (damageable != null)
-        {
-            if (damageable.CanBeHitBy(currentElement, this))
-            {
-                damageable.TakeElementHit(currentElement, particleDamage, this);
-                Debug.Log($"[EnemyShooter2D] Particle hit {other.name} with {GameDefs.ElementToText(currentElement)}");
-            }
-        }
+        Debug.Log($"[EnemyShooter2D] Particle hit {other.name} with {GameDefs.ElementToText(currentElement)}");
     }
 
     public void ApplyElementVisual()
@@ -258,7 +265,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         BuildWeakpoints();
 
-        // 生成後先推開一次（只用座標比對）
         rb.position += ComputePositionPush(rb.position) * Time.fixedDeltaTime;
     }
 

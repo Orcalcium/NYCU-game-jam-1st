@@ -169,7 +169,7 @@ public class EnemyPoolManager : MonoBehaviour
                 for (int b = 0; b < bursts.Length; b++)
                 {
                     var burst = bursts[b];
-                    burst.repeatInterval = interval;
+                    burst.time = interval;
                     bursts[b] = burst;
                 }
 
