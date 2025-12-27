@@ -10,8 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 112888676946515615}
   - component: {fileID: 228559525395095201}
-  - component: {fileID: 1099583426431736013}
-  - component: {fileID: 990136279705044573}
+  - component: {fileID: 1246289719331128450}
+  - component: {fileID: 6359003582360862701}
+  - component: {fileID: -1067676966206754780}
   m_Layer: 0
   m_Name: Monster
   m_TagString: Untagged
@@ -93,7 +94,34 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &1099583426431736013
+--- !u!50 &1246289719331128450
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 223523354737151428}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &6359003582360862701
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -102,27 +130,63 @@ MonoBehaviour:
   m_GameObject: {fileID: 223523354737151428}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0e94b020853cc94280dc8bcc6c8c24c, type: 3}
+  m_Script: {fileID: 11500000, guid: 5ca1671df6a829840a327ce29b2f288a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Monster
-  moveSpeed: 2.5
-  stopDistance: 0.25
-  shields: 000000000100000002000000
-  dots: {fileID: 0}
---- !u!114 &990136279705044573
-MonoBehaviour:
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyShooter2D
+  target: {fileID: 0}
+  stopDistance: 6.5
+  keepDistance: 0.25
+  moveSpeed: 3.6
+  bulletPool: {fileID: 0}
+  firePoint: {fileID: 0}
+  bulletSpeed: 10.5
+  fireCooldown: 0.6
+  currentElement: 0
+  hp: 3
+  bodyRenderer: {fileID: 0}
+--- !u!61 &-1067676966206754780
+BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 223523354737151428}
   m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 983fff649f624d5459ba2cd381300667, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MonsterElementDots
-  dotSprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  dotScale: 0.18
-  spacing: 0.22
-  localOffset: {x: 0, y: -0.55, z: 0}
-  sortingOrderOffset: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.21133333}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.28866667}
+    oldSize: {x: 1, y: 1}
+    newSize: {x: 1, y: 1}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0

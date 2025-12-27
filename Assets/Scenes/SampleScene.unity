@@ -410,7 +410,6 @@ GameObject:
   m_Component:
   - component: {fileID: 872511015}
   - component: {fileID: 872511016}
-  - component: {fileID: 872511017}
   m_Layer: 0
   m_Name: MonsterSpawner
   m_TagString: Untagged
@@ -442,29 +441,47 @@ MonoBehaviour:
   m_GameObject: {fileID: 872511014}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2c00315fd7a2c0c4cba60ff128c007c6, type: 3}
+  m_Script: {fileID: 11500000, guid: b4ae3f436b444b441be0b938605da7f5, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MonsterPool
-  prefab: {fileID: 1099583426431736013, guid: afec2f95ba90a3a46a436823a61d40af, type: 3}
-  prewarmCount: 12
-  maxActive: 10
---- !u!114 &872511017
-MonoBehaviour:
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPoolManager
+  enemyPrefab: {fileID: 6359003582360862701, guid: afec2f95ba90a3a46a436823a61d40af, type: 3}
+  poolSize: 10
+  maxAliveEnemies: 10
+  spawnPoints:
+  - {fileID: 1287435978}
+  player: {fileID: 556756410}
+  spawnInterval: 2.5
+--- !u!1 &1287435977
+GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 872511014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2fddce492d270424ebb116b01150b8c2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MonsterSpawner
-  pool: {fileID: 872511016}
-  player: {fileID: 556756410}
-  spawnInterval: 1.2
-  spawnRadius: 6
-  timer: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1287435978}
+  m_Layer: 0
+  m_Name: spawnpoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1287435978
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1287435977}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1940334090
 GameObject:
   m_ObjectHideFlags: 0
@@ -611,3 +628,4 @@ SceneRoots:
   - {fileID: 189590615}
   - {fileID: 872511015}
   - {fileID: 569023551}
+  - {fileID: 1287435978}
