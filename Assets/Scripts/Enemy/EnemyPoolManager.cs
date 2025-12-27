@@ -218,7 +218,7 @@ public class EnemyPoolManager : MonoBehaviour
     EnemyShooter2D GetInactiveEnemy()
     {
         for (int i = 0; i < pool.Count; i++)
-            if (!pool[i].gameObject.activeSelf) return pool[i];
+            if (!pool[i].gameObject.activeInHierarchy) return pool[i];
         return null;
     }
 
@@ -226,7 +226,7 @@ public class EnemyPoolManager : MonoBehaviour
     {
         int c = 0;
         for (int i = 0; i < pool.Count; i++)
-            if (pool[i].gameObject.activeSelf) c++;
+            if (pool[i].gameObject.activeInHierarchy) c++;
         return c;
     }
 }

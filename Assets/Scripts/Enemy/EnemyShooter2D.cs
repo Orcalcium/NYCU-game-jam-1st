@@ -329,10 +329,10 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         var pc = source as PlayerController2D;
         if (pc != null)
         {
-            if (pc.currentElement == currentElement) return false;
+            if (pc.currentElement == currentElement) return true;
         }
 
-        return true;
+        return false;
     }
 
     public void TakeElementHit(ElementType element, int damage, Object source)

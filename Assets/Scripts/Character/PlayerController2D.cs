@@ -1,4 +1,5 @@
 // File: Player/PlayerController2D.cs
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using GameJam.Common;
@@ -14,6 +15,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     public float dashDuration = 0.26f;
     public float dashCooldown = 0.75f;
     public float dashMaxDistance = 4.5f;
+
+    [Header("Dash Damage (Along Path)")]
+    public int dashDamage = 1;
+    public float dashDamageRadius = 0.4f;
+    public LayerMask dashDamageLayers;
 
     [Header("Shoot (Left Click)")]
     public BulletPool bulletPool;
@@ -34,6 +40,15 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     [Tooltip("If enabled, Player will automatically configure Main Camera to follow the player at Awake(). Disabled by default so you can assign/adjust the camera manually.")]
     public bool autoSetupCamera = false;
 
+    [Header("Clamp (World Bounds)")]
+    public float clampX = 13.5f;
+    public float clampY = 7.5f;
+
+    [Header("Skill Aim (Slow Time + Indicator)")]
+    public float aimTimeScale = 0.15f;
+    public float indicatorLineWidth = 0.06f;
+    public int indicatorCircleSegments = 48;
+
     Rigidbody2D rb;
     Camera cam;
     Collider2D col;
@@ -48,9 +63,17 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     Vector2 dashTargetPos;
     bool dashUseTarget;
 
-    // 固定 R_G_B（你專案的對應：Fire/Water/Nature）
+    public PlayerSkillCaster2D PlayerSkillCaster2D;
+
     static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
     int cycleIndex;
+
+    bool isAimingSkill;
+    float baseFixedDeltaTime;
+
+    LineRenderer indicatorLR;
+
+    readonly HashSet<int> dashHitIds = new HashSet<int>();
 
     void Awake()
     {
@@ -59,11 +82,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         rb.linearDamping = 8f;
 
         col = GetComponent<Collider2D>();
-
         cam = Camera.main;
 
         if (bodyRenderer == null) bodyRenderer = GetComponentInChildren<SpriteRenderer>(true);
         if (firePoint == null) firePoint = transform;
+
+        if (PlayerSkillCaster2D == null) PlayerSkillCaster2D = GetComponent<PlayerSkillCaster2D>();
 
         cycleIndex = GetCycleIndex(currentElement);
         currentElement = Cycle[cycleIndex];
@@ -71,8 +95,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
 
-        // Automatic camera setup is disabled by default. Enable `autoSetupCamera`
-        // in the Inspector if you want the Player to configure Main Camera at Awake().
         if (autoSetupCamera)
         {
             Camera mainCam = Camera.main;
@@ -96,6 +118,9 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         drag.endWidth = 0.06f;
         drag.trailColor = new Color(1f, 1f, 1f, 0.55f);
         drag.minSpeedForTrail = 0.2f;
+
+        baseFixedDeltaTime = Time.fixedDeltaTime;
+        SetupIndicator();
     }
 
     void Update()
@@ -123,9 +148,44 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             }
         }
 
+        HandleSkillInput();
         HandleDashInput();
-        HandleShootInput();
         AimBodyToMouse();
+
+        if (isAimingSkill)
+            UpdateSkillIndicator();
+    }
+
+    public void HandleSkillInput()
+    {
+        if (Mouse.current == null) return;
+        if (PlayerSkillCaster2D == null) return;
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            PlayerSkillCaster2D.CycleSkill();
+            isAimingSkill = true;
+            ApplyAimSlowTime(true);
+            SetIndicatorEnabled(true);
+            UpdateSkillIndicator();
+        }
+
+        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        {
+            if (!isAimingSkill) return;
+
+            isAimingSkill = false;
+            ApplyAimSlowTime(false);
+            SetIndicatorEnabled(false);
+
+            Vector2 origin = (firePoint ? (Vector2)firePoint.position : rb.position);
+            Vector2 aimWorld = PlayerSkillCaster2D.GetMouseWorldClamped(origin);
+            Vector2 dir = aimWorld - origin;
+            if (dir.sqrMagnitude < 0.0001f) return;
+            dir.Normalize();
+
+            PlayerSkillCaster2D.CastCurrent(origin, dir);
+        }
     }
 
     void FixedUpdate()
@@ -134,6 +194,9 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         {
             Vector2 cur = rb.position;
 
+            float dashSpeed = moveSpeed * dashSpeedMultiplier;
+            float stepDist = dashSpeed * Time.fixedDeltaTime;
+
             if (dashUseTarget)
             {
                 Vector2 toTarget = dashTargetPos - cur;
@@ -141,7 +204,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
                 if (remain <= 0.02f)
                 {
-                    rb.position = dashTargetPos;
+                    rb.position = ClampPos(dashTargetPos);
                     rb.linearVelocity = Vector2.zero;
                     dashTimer = 0f;
                     invulnerable = false;
@@ -149,7 +212,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                     return;
                 }
 
-                rb.linearVelocity = toTarget.normalized * moveSpeed * dashSpeedMultiplier;
+                Vector2 dir = toTarget.normalized;
+                float castDist = Mathf.Min(remain, stepDist);
+                DashDamageAlongPath(cur, dir, castDist);
+
+                rb.linearVelocity = dir * dashSpeed;
+                rb.position = ClampPos(rb.position);
                 return;
             }
             else
@@ -164,13 +232,62 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                     return;
                 }
 
-                rb.linearVelocity = dashDir * moveSpeed * dashSpeedMultiplier;
+                float remain = Mathf.Max(0f, dashMaxDistance - traveled);
+                float castDist = Mathf.Min(remain, stepDist);
+                DashDamageAlongPath(cur, dashDir, castDist);
+
+                rb.linearVelocity = dashDir * dashSpeed;
+                rb.position = ClampPos(rb.position);
                 return;
             }
         }
 
         Vector2 move = ReadMoveInput();
         rb.linearVelocity = move * moveSpeed;
+        rb.position = ClampPos(rb.position);
+    }
+
+    void DashDamageAlongPath(Vector2 start, Vector2 dir, float dist)
+    {
+        if (dist <= 0.0001f) return;
+
+        RaycastHit2D[] hits = Physics2D.CircleCastAll(start, dashDamageRadius, dir, dist, dashDamageLayers);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D other = hits[i].collider;
+            if (!other) continue;
+
+            int id = other.GetInstanceID();
+            if (dashHitIds.Contains(id)) continue;
+            dashHitIds.Add(id);
+
+            if (col != null && other == col) continue;
+
+            var dmg = other.GetComponentInParent<IElementDamageable>();
+            if (dmg == null) continue;
+
+            bool canHit = dmg.CanBeHitBy(currentElement, this);
+            if (canHit)
+            {
+                dmg.TakeElementHit(currentElement, dashDamage, this);
+                continue;
+            }
+
+            if (dmg is EnemyShooter2D enemy)
+            {
+                if (enemy.currentElement == currentElement)
+                {
+                    dmg.TakeElementHit(currentElement, dashDamage, this);
+                }
+            }
+        }
+    }
+
+    Vector2 ClampPos(Vector2 p)
+    {
+        p.x = Mathf.Clamp(p.x, -clampX, clampX);
+        p.y = Mathf.Clamp(p.y, -clampY, clampY);
+        return p;
     }
 
     Vector2 ReadMoveInput()
@@ -203,6 +320,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             invulnerable = true;
             if (col != null) col.enabled = false;
 
+            dashHitIds.Clear();
+
             Vector2 start = rb.position;
             dashStartPos = start;
 
@@ -213,40 +332,15 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (dist <= dashMaxDistance)
             {
                 dashUseTarget = true;
-                dashTargetPos = mouseWorld;
+                dashTargetPos = ClampPos(mouseWorld);
                 dashDir = dist > 1e-6f ? (toMouse / dist) : Vector2.right;
             }
             else
             {
                 dashUseTarget = false;
                 dashDir = dist > 1e-6f ? (toMouse / dist) : Vector2.right;
-                dashTargetPos = start + dashDir * dashMaxDistance;
+                dashTargetPos = ClampPos(start + dashDir * dashMaxDistance);
             }
-        }
-    }
-
-    void HandleShootInput()
-    {
-        if (Mouse.current == null) return;
-
-        if (Mouse.current.leftButton.wasPressedThisFrame)
-        {
-            if (fireCd > 0f) return;
-            fireCd = fireCooldown;
-
-            ElementType shotElement = currentElement;
-
-            Vector2 pos = firePoint != null ? (Vector2)firePoint.position : (Vector2)transform.position;
-            Vector2 dir = GetAimDirection(pos);
-
-            if (bulletPool != null)
-                bulletPool.Spawn(pos, dir, shotElement, this, bulletSpeed);
-
-            cycleIndex = (cycleIndex + 1) % Cycle.Length;
-            currentElement = Cycle[cycleIndex];
-            ApplyElementVisual();
-
-            EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
         }
     }
 
@@ -289,6 +383,14 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         return 0;
     }
 
+    public void CycleElementAfterSkill()
+    {
+        cycleIndex = (cycleIndex + 1) % Cycle.Length;
+        currentElement = Cycle[cycleIndex];
+        ApplyElementVisual();
+        EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
+    }
+
     public bool CanBeHitBy(ElementType element, Object source)
     {
         if (invulnerable) return false;
@@ -305,6 +407,91 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         if (hp <= 0)
         {
             Debug.Log("[Player] Dead");
+        }
+    }
+
+    void ApplyAimSlowTime(bool enabled)
+    {
+        if (enabled)
+        {
+            Time.timeScale = Mathf.Clamp(aimTimeScale, 0.01f, 1f);
+            Time.fixedDeltaTime = baseFixedDeltaTime * Time.timeScale;
+        }
+        else
+        {
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = baseFixedDeltaTime;
+        }
+    }
+
+    void SetupIndicator()
+    {
+        var go = new GameObject("SkillIndicator");
+        go.transform.SetParent(transform, false);
+        indicatorLR = go.AddComponent<LineRenderer>();
+        indicatorLR.useWorldSpace = true;
+        indicatorLR.loop = false;
+        indicatorLR.enabled = false;
+        indicatorLR.positionCount = 2;
+        indicatorLR.startWidth = indicatorLineWidth;
+        indicatorLR.endWidth = indicatorLineWidth;
+        indicatorLR.numCapVertices = 8;
+    }
+
+    void SetIndicatorEnabled(bool enabled)
+    {
+        if (indicatorLR != null) indicatorLR.enabled = enabled;
+    }
+
+    void UpdateSkillIndicator()
+    {
+        if (indicatorLR == null || PlayerSkillCaster2D == null) return;
+
+        Vector2 origin = (firePoint ? (Vector2)firePoint.position : rb.position);
+        Vector2 aimWorld = PlayerSkillCaster2D.GetMouseWorldClamped(origin);
+        Vector2 dir = aimWorld - origin;
+        if (dir.sqrMagnitude < 0.0001f) dir = Vector2.right;
+        dir.Normalize();
+
+        Color c = GameDefs.ElementToColor(currentElement);
+        indicatorLR.startColor = c;
+        indicatorLR.endColor = c;
+
+        var skill = PlayerSkillCaster2D.GetCurrentSkill();
+
+        if (skill == PlayerSkillCaster2D.SkillType.AoEBlast)
+        {
+            float radius = PlayerSkillCaster2D.GetAoeRadius();
+            DrawCircle(aimWorld, radius);
+        }
+        else
+        {
+            float len = PlayerSkillCaster2D.GetIndicatorLineLength();
+            DrawLine(origin, origin + dir * len);
+        }
+    }
+
+    void DrawLine(Vector2 a, Vector2 b)
+    {
+        indicatorLR.loop = false;
+        indicatorLR.positionCount = 2;
+        indicatorLR.SetPosition(0, new Vector3(a.x, a.y, 0f));
+        indicatorLR.SetPosition(1, new Vector3(b.x, b.y, 0f));
+    }
+
+    void DrawCircle(Vector2 center, float radius)
+    {
+        int seg = Mathf.Max(8, indicatorCircleSegments);
+        indicatorLR.loop = false;
+        indicatorLR.positionCount = seg + 1;
+
+        for (int i = 0; i <= seg; i++)
+        {
+            float t = (float)i / seg;
+            float ang = t * Mathf.PI * 2f;
+            float x = center.x + Mathf.Cos(ang) * radius;
+            float y = center.y + Mathf.Sin(ang) * radius;
+            indicatorLR.SetPosition(i, new Vector3(x, y, 0f));
         }
     }
 }

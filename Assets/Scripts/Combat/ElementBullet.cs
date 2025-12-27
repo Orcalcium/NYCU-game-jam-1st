@@ -1,4 +1,5 @@
 // File: Combat/ElementBullet.cs
+using System.Collections.Generic;
 using UnityEngine;
 using GameJam.Common;
 
@@ -10,6 +11,10 @@ public class ElementBullet : MonoBehaviour
     public float speed = 12f;
     public float lifeSeconds = 2.2f;
     public int damage = 1;
+
+    [Header("Pierce")]
+    public bool canPierceUnits = false;
+    public int maxPierceHits = -1;
 
     [Header("Visual")]
     public SpriteRenderer sr;
@@ -23,6 +28,9 @@ public class ElementBullet : MonoBehaviour
     ElementType element;
     Object owner;
     BulletPool pool;
+
+    int pierceHitCount;
+    readonly HashSet<int> hitIds = new HashSet<int>();
 
     void Awake()
     {
@@ -44,9 +52,29 @@ public class ElementBullet : MonoBehaviour
 
     public void Init(BulletPool ownerPool, Vector2 position, Vector2 direction, ElementType e, Object bulletOwner, float overrideSpeed = -1f)
     {
+        Init(ownerPool, position, direction, e, bulletOwner, overrideSpeed, canPierceUnits, maxPierceHits);
+    }
+
+    public void Init(
+        BulletPool ownerPool,
+        Vector2 position,
+        Vector2 direction,
+        ElementType e,
+        Object bulletOwner,
+        float overrideSpeed,
+        bool pierce,
+        int pierceLimit = -1
+    )
+    {
         pool = ownerPool;
         element = e;
         owner = bulletOwner;
+
+        canPierceUnits = pierce;
+        maxPierceHits = pierceLimit;
+
+        pierceHitCount = 0;
+        hitIds.Clear();
 
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
@@ -75,7 +103,7 @@ public class ElementBullet : MonoBehaviour
     void OnTriggerEnter2D(Collider2D other)
     {
         if (!gameObject.activeInHierarchy) return;
-        // If the bullet hit a layer in NoEffectMask, just despawn without processing damage
+
         if (other != null && ((NoEffectMask.value & (1 << other.gameObject.layer)) != 0))
         {
             Despawn();
@@ -87,24 +115,40 @@ public class ElementBullet : MonoBehaviour
         var dmg = other.GetComponentInParent<IElementDamageable>();
         if (dmg == null) return;
 
+        int id = other.GetInstanceID();
+        if (hitIds.Contains(id)) return;
+        hitIds.Add(id);
+
+        bool didDamage = false;
+
         bool canHit = dmg.CanBeHitBy(element, owner);
         if (canHit)
         {
             dmg.TakeElementHit(element, damage, owner);
-            Despawn();
-            return;
+            didDamage = true;
         }
-
-        if (dmg is EnemyShooter2D enemy)
+        else if (dmg is EnemyShooter2D enemy)
         {
             if (enemy.currentElement == element)
             {
                 dmg.TakeElementHit(element, damage, owner);
+                didDamage = true;
+            }
+        }
+
+        if (!didDamage) return;
+
+        if (canPierceUnits)
+        {
+            pierceHitCount++;
+            if (maxPierceHits >= 0 && pierceHitCount >= maxPierceHits)
+            {
                 Despawn();
-                return;
             }
             return;
         }
+
+        Despawn();
     }
 
     public void Despawn()

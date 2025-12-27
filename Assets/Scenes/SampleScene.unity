@@ -222,6 +222,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: wall (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 2703729354382358194, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 7105060489736730036, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
       propertyPath: m_LocalScale.x
       value: 1
@@ -288,6 +292,7 @@ GameObject:
   - component: {fileID: 556756411}
   - component: {fileID: 556756412}
   - component: {fileID: 556756413}
+  - component: {fileID: 556756414}
   m_Layer: 7
   m_Name: Player
   m_TagString: Untagged
@@ -386,6 +391,11 @@ MonoBehaviour:
   dashDuration: 0.18
   dashCooldown: 0.75
   dashMaxDistance: 4.5
+  dashDamage: 1
+  dashDamageRadius: 0.4
+  dashDamageLayers:
+    serializedVersion: 2
+    m_Bits: 0
   bulletPool: {fileID: 569023550}
   firePoint: {fileID: 556756410}
   bulletSpeed: 14
@@ -396,6 +406,12 @@ MonoBehaviour:
   cameraDamping: 0
   cameraOrthoSize: 8
   autoSetupCamera: 0
+  clampX: 13.5
+  clampY: 7.5
+  aimTimeScale: 0.15
+  indicatorLineWidth: 0.06
+  indicatorCircleSegments: 48
+  PlayerSkillCaster2D: {fileID: 556756414}
 --- !u!50 &556756412
 Rigidbody2D:
   serializedVersion: 5
@@ -459,6 +475,42 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.3
+--- !u!114 &556756414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 556756408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4cf84358b7929e489c646fbdeae4eed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSkillCaster2D
+  player: {fileID: 556756411}
+  rb: {fileID: 556756412}
+  firePoint: {fileID: 556756410}
+  bulletPool: {fileID: 569023550}
+  targetCamera: {fileID: 1940334092}
+  maxAimRange: 16
+  obstacleLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  damageLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  currentSkill: 0
+  pierceBulletSpeed: 14
+  pierceDamage: 1
+  pierceCooldown: 0.12
+  blinkMaxDistance: 6.5
+  blinkHitRadius: 0.35
+  blinkDamage: 2
+  blinkCooldown: 0.75
+  aoeMaxCastRange: 7.5
+  aoeRadius: 2.2
+  aoeDamage: 2
+  aoeCooldown: 0.9
 --- !u!1 &569023549
 GameObject:
   m_ObjectHideFlags: 0
@@ -577,6 +629,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: wall (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 2703729354382358194, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 7105060489736730036, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
       propertyPath: m_LocalScale.x
       value: 1
@@ -641,6 +697,10 @@ PrefabInstance:
     - target: {fileID: 672535078529228831, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
       propertyPath: m_Name
       value: wall (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 2703729354382358194, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 7105060489736730036, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
       propertyPath: m_LocalScale.x
@@ -874,6 +934,10 @@ PrefabInstance:
     - target: {fileID: 672535078529228831, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
       propertyPath: m_Name
       value: wall
+      objectReference: {fileID: 0}
+    - target: {fileID: 2703729354382358194, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 7105060489736730036, guid: 771e71b54deea2d1b9160b97ba029647, type: 3}
       propertyPath: m_LocalScale.x
