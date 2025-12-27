@@ -71,6 +71,13 @@ public class ElementBullet : MonoBehaviour
     void OnTriggerEnter2D(Collider2D other)
     {
         if (!gameObject.activeInHierarchy) return;
+        // If the bullet hit a shield (layer 12), just despawn without processing damage
+        if (other != null && other.gameObject.layer == LayerMask.GetMask("Shield"))
+        {
+            Despawn();
+            return;
+        }
+
         if (owner != null && other != null && other.transform == (owner as Component)?.transform) return;
 
         var dmg = other.GetComponentInParent<IElementDamageable>();
