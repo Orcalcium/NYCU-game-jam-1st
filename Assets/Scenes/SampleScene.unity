@@ -488,6 +488,12 @@ MonoBehaviour:
   - {fileID: 1287435978}
   player: {fileID: 556756410}
   spawnInterval: 2.5
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  spawnClearRadius: 0.7
+  spawnTryCount: 20
+  spawnJitterRadius: 0.6
 --- !u!1 &1287435977
 GameObject:
   m_ObjectHideFlags: 0
