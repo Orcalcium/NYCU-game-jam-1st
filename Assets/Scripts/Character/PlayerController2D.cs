@@ -28,6 +28,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     [Header("Visual")]
     public SpriteRenderer bodyRenderer;
 
+    [Header("Camera")]
+    public float cameraDamping = 1f;
+    public float cameraOrthoSize = 5f;
+
     Rigidbody2D rb;
     Camera cam;
     Collider2D col;
@@ -42,6 +46,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     Vector2 dashTargetPos;
     bool dashUseTarget;
 
+    // 固定 R_G_B（你專案的對應：Fire/Water/Nature）
     static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
     int cycleIndex;
 
@@ -63,12 +68,43 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         ApplyElementVisual();
 
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
+
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            var cf = mainCam.GetComponent<CameraFollow2D>();
+            if (cf == null) cf = mainCam.gameObject.AddComponent<CameraFollow2D>();
+            cf.target = transform;
+            cf.smoothTime = cameraDamping;
+            mainCam.orthographicSize = cameraOrthoSize;
+        }
+
+        var drag = GetComponent<MovementDragEffect>();
+        if (drag == null) drag = gameObject.AddComponent<MovementDragEffect>();
+        drag.sourceRigidbody = rb;
+        drag.spriteSource = bodyRenderer;
+        drag.enableTrail = true;
+        drag.trailTime = 0.22f;
+        drag.startWidth = 0.36f;
+        drag.endWidth = 0.06f;
+        drag.trailColor = new Color(1f, 1f, 1f, 0.55f);
+        drag.minSpeedForTrail = 0.2f;
     }
 
     void Update()
     {
         if (dashCd > 0f) dashCd -= Time.deltaTime;
         if (fireCd > 0f) fireCd -= Time.deltaTime;
+
+        if (GameJam.UI.GameUIManager.Instance != null)
+        {
+            float progress = 1f;
+            if (fireCooldown > 0f)
+            {
+                progress = Mathf.Clamp01(1f - (fireCd / fireCooldown));
+            }
+            GameJam.UI.GameUIManager.Instance.UpdateFireCooldown(progress);
+        }
 
         if (dashTimer > 0f)
         {

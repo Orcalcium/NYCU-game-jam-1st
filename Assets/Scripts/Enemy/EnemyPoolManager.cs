@@ -17,6 +17,8 @@ public class EnemyPoolManager : MonoBehaviour
     public Transform[] spawnPoints;
     public Transform player;
     public float spawnInterval = 2.5f;
+    [Tooltip("Multiplier applied to enemy moveSpeed when spawned (1 = use prefab default)")]
+    public float spawnMoveSpeedMultiplier = 1.0f;
 
     [Header("Spawn Anti-Overlap")]
     public LayerMask enemyLayer;
@@ -73,6 +75,8 @@ public class EnemyPoolManager : MonoBehaviour
 
         e.gameObject.SetActive(true);
         e.ResetFromPool(player, spawnPos, ElementType.Fire);
+        // Apply spawn-time speed multiplier so designers can globally slow/speed enemies
+        e.moveSpeed *= spawnMoveSpeedMultiplier;
 
         CacheParticleCollisionDefaults(e);
 
