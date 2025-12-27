@@ -390,7 +390,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.17661172
 --- !u!1 &569023549
 GameObject:
   m_ObjectHideFlags: 0
@@ -488,6 +488,14 @@ MonoBehaviour:
   - {fileID: 1287435978}
   player: {fileID: 556756410}
   spawnInterval: 2.5
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  spawnClearRadius: 0.7
+  spawnTryCount: 20
+  spawnJitterRadius: 0.6
+  emissionIntervalMin: 3
+  emissionIntervalMax: 5
 --- !u!1 &1287435977
 GameObject:
   m_ObjectHideFlags: 0

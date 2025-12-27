@@ -12,9 +12,5 @@ public class AutoAssignPlayerToEnemies : MonoBehaviour
             var p = FindFirstObjectByType<PlayerController2D>();
             if (p != null) player = p.transform;
         }
-
-        var enemies = FindObjectsByType<EnemyShooter>(FindObjectsSortMode.None);
-        for (int i = 0; i < enemies.Length; i++)
-            enemies[i].player = player;
     }
 }
