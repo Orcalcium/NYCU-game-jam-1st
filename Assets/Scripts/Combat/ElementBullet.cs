@@ -26,7 +26,6 @@ public class ElementBullet : MonoBehaviour
         rb.gravityScale = 0f;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
-        // 確保是可被 velocity 推動的狀態（避免 Prefab 設錯導致不動）
         rb.bodyType = RigidbodyType2D.Dynamic;
         rb.simulated = true;
         rb.constraints = RigidbodyConstraints2D.None;
@@ -45,7 +44,6 @@ public class ElementBullet : MonoBehaviour
         element = e;
         owner = bulletOwner;
 
-        // 先啟用，避免 OnEnable/Pool 初始化覆蓋你稍後設定的速度
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
         transform.position = position;
@@ -57,7 +55,6 @@ public class ElementBullet : MonoBehaviour
 
         float spd = overrideSpeed > 0f ? overrideSpeed : speed;
 
-        // 再次確保可動（避免 Pool 或 Prefab 改過）
         rb.simulated = true;
         rb.bodyType = RigidbodyType2D.Dynamic;
         rb.WakeUp();
@@ -79,11 +76,24 @@ public class ElementBullet : MonoBehaviour
         var dmg = other.GetComponentInParent<IElementDamageable>();
         if (dmg == null) return;
 
-        if (!dmg.CanBeHitBy(element, owner))
+        bool canHit = dmg.CanBeHitBy(element, owner);
+        if (canHit)
+        {
+            dmg.TakeElementHit(element, damage, owner);
+            Despawn();
             return;
+        }
 
-        dmg.TakeElementHit(element, damage, owner);
-        Despawn();
+        if (dmg is EnemyShooter2D enemy)
+        {
+            if (enemy.currentElement == element)
+            {
+                dmg.TakeElementHit(element, damage, owner);
+                Despawn();
+                return;
+            }
+            return;
+        }
     }
 
     public void Despawn()

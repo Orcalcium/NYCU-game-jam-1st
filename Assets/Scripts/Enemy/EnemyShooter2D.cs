@@ -168,6 +168,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
     void OnParticleCollision(GameObject other)
     {
+        Debug.Log($"[EnemyShooter2D] Particle hit {other.name} with {GameDefs.ElementToText(currentElement)}");
         if (dead) return;
 
         IElementDamageable damageable = other.GetComponent<IElementDamageable>();
