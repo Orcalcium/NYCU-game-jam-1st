@@ -20,6 +20,7 @@ public class MonsterSpawner : MonoBehaviour
     void Update()
     {
         if (pool == null || player == null) return;
+        if (pool.ActiveCount >= pool.maxActive) return;
 
         timer += Time.deltaTime;
         if (timer < spawnInterval) return;

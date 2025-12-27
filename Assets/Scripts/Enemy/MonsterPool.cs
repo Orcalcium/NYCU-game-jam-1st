@@ -8,7 +8,13 @@ public class MonsterPool : MonoBehaviour
     public Monster prefab;
     public int prewarmCount = 12;
 
+    [Header("Active Limit")]
+    public int maxActive = 10;
+
     readonly Queue<Monster> pool = new Queue<Monster>();
+    readonly HashSet<Monster> activeSet = new HashSet<Monster>();
+
+    public int ActiveCount => activeSet.Count;
 
     void Awake()
     {
@@ -30,17 +36,22 @@ public class MonsterPool : MonoBehaviour
     public Monster Spawn(Vector3 position, Transform player)
     {
         if (prefab == null) return null;
-            
+        if (activeSet.Count >= maxActive) return null;
+
         Monster m = pool.Count > 0 ? pool.Dequeue() : Instantiate(prefab, transform);
         m.transform.position = position;
         m.gameObject.SetActive(true);
         m.Init(player, this);
+
+        activeSet.Add(m);
         return m;
     }
 
     public void Release(Monster monster)
     {
         if (monster == null) return;
+
+        activeSet.Remove(monster);
 
         monster.gameObject.SetActive(false);
         monster.transform.SetParent(transform, true);

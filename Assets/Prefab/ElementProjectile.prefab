@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &223523354737151428
+--- !u!1 &3387851100681540151
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,40 +8,39 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 112888676946515615}
-  - component: {fileID: 228559525395095201}
-  - component: {fileID: 1099583426431736013}
-  - component: {fileID: 990136279705044573}
+  - component: {fileID: 609041008256407122}
+  - component: {fileID: 8775924930758928286}
+  - component: {fileID: 6664155455228345743}
   m_Layer: 0
-  m_Name: Monster
+  m_Name: ElementProjectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &112888676946515615
+--- !u!4 &609041008256407122
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 223523354737151428}
+  m_GameObject: {fileID: 3387851100681540151}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.2, y: 0.2, z: 0.2}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &228559525395095201
+--- !u!212 &8775924930758928286
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 223523354737151428}
+  m_GameObject: {fileID: 3387851100681540151}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -83,46 +82,29 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 4
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 75f5f34dc1b5347e0b8351032682f224, type: 3}
-  m_Color: {r: 1, g: 0, b: 0, a: 1}
+  m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
+  m_Color: {r: 1, g: 0.5264151, b: 0.9004094, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 1, y: 2}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &1099583426431736013
+--- !u!114 &6664155455228345743
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 223523354737151428}
+  m_GameObject: {fileID: 3387851100681540151}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0e94b020853cc94280dc8bcc6c8c24c, type: 3}
+  m_Script: {fileID: 11500000, guid: 3c5bf62219427d24b9edba4976471b4c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Monster
-  moveSpeed: 2.5
-  stopDistance: 0.25
-  shields: 000000000100000002000000
-  dots: {fileID: 0}
---- !u!114 &990136279705044573
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 223523354737151428}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 983fff649f624d5459ba2cd381300667, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MonsterElementDots
-  dotSprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  dotScale: 0.18
-  spacing: 0.22
-  localOffset: {x: 0, y: -0.55, z: 0}
-  sortingOrderOffset: 1
+  m_EditorClassIdentifier: Assembly-CSharp::ElementProjectile
+  speed: 12
+  explodeRadius: 2.2
+  arriveThreshold: 0.15
+  stunSeconds: 0.5
