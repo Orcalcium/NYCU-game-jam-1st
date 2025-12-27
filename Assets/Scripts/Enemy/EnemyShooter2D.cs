@@ -14,10 +14,8 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public float moveSpeed = 3.6f;
 
     [Header("Shoot")]
-    public BulletPool bulletPool;
-    public Transform firePoint;
-    public float bulletSpeed = 10.5f;
-    public float fireCooldown = 0.6f;
+    public ParticleSystem particleSystem;
+    public int particleDamage = 1;
 
     [Header("State")]
     public ElementType currentElement = ElementType.Fire;
@@ -27,7 +25,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public SpriteRenderer bodyRenderer;
 
     Rigidbody2D rb;
-    float fireCd;
     bool dead;
 
     void Awake()
@@ -37,16 +34,11 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         rb.linearDamping = 8f;
 
         if (bodyRenderer == null) bodyRenderer = GetComponentInChildren<SpriteRenderer>(true);
-        if (firePoint == null) firePoint = transform;
+        
+        // Get particle system from children if not assigned
+        if (particleSystem == null) particleSystem = GetComponentInChildren<ParticleSystem>(true);
 
         ApplyElementVisual();
-    }
-
-    void Update()
-    {
-        if (dead) return;
-        if (fireCd > 0f) fireCd -= Time.deltaTime;
-        TryShoot();
     }
 
     void FixedUpdate()
@@ -78,30 +70,38 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         }
     }
 
-    void TryShoot()
+    void OnParticleCollision(GameObject other)
     {
-        if (target == null || bulletPool == null) return;
-        if (fireCd > 0f) return;
+        if (dead) return;
 
-        Vector2 pos = firePoint != null ? (Vector2)firePoint.position : rb.position;
-        Vector2 dir = ((Vector2)target.position - pos);
-        if (dir.sqrMagnitude < 1e-6f) dir = Vector2.right;
-        dir.Normalize();
-
-        bulletPool.Spawn(pos, dir, currentElement, this, bulletSpeed);
-        fireCd = fireCooldown;
+        // Check if the collision is with a damageable object
+        IElementDamageable damageable = other.GetComponent<IElementDamageable>();
+        if (damageable != null)
+        {
+            if (damageable.CanBeHitBy(currentElement, this))
+            {
+                damageable.TakeElementHit(currentElement, particleDamage, this);
+                Debug.Log($"[EnemyShooter2D] Particle hit {other.name} with {GameDefs.ElementToText(currentElement)}");
+            }
+        }
     }
 
     public void ApplyElementVisual()
     {
         if (bodyRenderer == null) return;
         bodyRenderer.color = GameDefs.ElementToColor(currentElement);
+        
+        // Update particle system color if available
+        if (particleSystem != null)
+        {
+            var main = particleSystem.main;
+            main.startColor = GameDefs.ElementToColor(currentElement);
+        }
     }
-
 
     public bool CanBeHitBy(ElementType element, Object source)
     {
-        // 可依你規則調整：此處允許被任何元素命中（包含同色）
+        // Can be hit by any element (including same color) as long as not dead
         return !dead;
     }
 
@@ -111,7 +111,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         hp -= damage;
 
-        // 受擊後改變顏色（直接變成命中它的元素）
+        // Change element when hit
         currentElement = element;
         ApplyElementVisual();
 

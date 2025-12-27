@@ -1,7 +1,10 @@
 // File: Enemy/EnemyShooter.cs
 using UnityEngine;
 using GameJam.Common;
+using System;
+using Object = UnityEngine.Object;
 
+[Obsolete("Please don't use this")]
 public class EnemyShooter : MonoBehaviour, IElementDamageable
 {
     [Header("Target")]
