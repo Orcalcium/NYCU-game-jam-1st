@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 1246289719331128450}
   - component: {fileID: 6359003582360862701}
   - component: {fileID: -1067676966206754780}
+  - component: {fileID: 8637967973486099064}
   m_Layer: 0
   m_Name: Monster
   m_TagString: Untagged
@@ -143,6 +144,9 @@ MonoBehaviour:
   fireCooldown: 0.6
   currentElement: 0
   hp: 3
+  weakpointCount: 3
+  weakpointDots: {fileID: 0}
+  weakpointDotPrefab: {fileID: 0}
   bodyRenderer: {fileID: 0}
 --- !u!61 &-1067676966206754780
 BoxCollider2D:
@@ -190,3 +194,20 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &8637967973486099064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 223523354737151428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d14621f68bedfd649ad772f445f61f8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyWeakpointDots
+  dotPrefab: {fileID: 5131191532854340797, guid: 9275b20762c45854cb94a555f80d3295, type: 3}
+  dotCount: 3
+  spacing: 0.22
+  localOffset: {x: 0, y: -0.55}
+  dotScale: 0.16
