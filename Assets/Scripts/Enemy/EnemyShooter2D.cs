@@ -15,7 +15,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public float moveSpeed = 3.6f;
 
     [Header("Shoot")]
-    public ParticleSystem particleSystem;
+    public new ParticleSystem particleSystem;
     public int particleDamage = 1;
 
     [Header("State")]
@@ -121,10 +121,11 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     {
         if (Time.frameCount != allEnemiesCacheFrame)
         {
-            allEnemiesCache = FindObjectsOfType<EnemyShooter2D>(false);
+            allEnemiesCache = Object.FindObjectsByType<EnemyShooter2D>(
+                FindObjectsSortMode.None
+            );
             allEnemiesCacheFrame = Time.frameCount;
         }
-
         float minDist = Mathf.Max(0.01f, pushMinDistance);
         float minDist2 = minDist * minDist;
 

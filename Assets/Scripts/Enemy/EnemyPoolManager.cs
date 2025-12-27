@@ -21,6 +21,10 @@ public class EnemyPoolManager : MonoBehaviour
     public int spawnTryCount = 20;
     public float spawnJitterRadius = 0.6f;
 
+    [Header("Monster VFX")]
+    public float emissionIntervalMin = 3f;
+    public float emissionIntervalMax = 5f;
+
     readonly List<EnemyShooter2D> pool = new();
     float spawnTimer;
 
@@ -51,11 +55,57 @@ public class EnemyPoolManager : MonoBehaviour
         EnemyShooter2D e = GetInactiveEnemy();
         if (e == null) return;
 
-        Vector2 spawnPos;
-        if (!TryFindNonOverlappingSpawn(out spawnPos)) return;
+        if (!TryFindNonOverlappingSpawn(out Vector2 spawnPos)) return;
 
         e.gameObject.SetActive(true);
         e.ResetFromPool(player, spawnPos, ElementType.Fire);
+
+        float interval = Random.Range(emissionIntervalMin, emissionIntervalMax);
+        StartCoroutine(ApplyEmissionIntervalAndRestartNextFrame(e.transform, interval));
+    }
+
+    System.Collections.IEnumerator ApplyEmissionIntervalAndRestartNextFrame(Transform monsterRoot, float interval)
+    {
+        yield return null;
+
+        var systems = monsterRoot.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+        {
+            var ps = systems[i];
+            if (ps == null) continue;
+
+            var emission = ps.emission;
+            bool applied = false;
+
+            int burstCount = emission.burstCount;
+            if (burstCount > 0)
+            {
+                var bursts = new ParticleSystem.Burst[burstCount];
+                emission.GetBursts(bursts);
+
+                for (int b = 0; b < bursts.Length; b++)
+                {
+                    var burst = bursts[b];
+                    burst.time = interval;
+                    burst.repeatInterval = interval;
+                    bursts[b] = burst;
+                }
+
+                emission.SetBursts(bursts);
+                applied = true;
+            }
+
+            if (!applied)
+            {
+                float rate = interval <= 0f ? 0f : (1f / interval);
+                emission.rateOverTime = new ParticleSystem.MinMaxCurve(rate);
+            }
+
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ps.Clear(true);
+            ps.Simulate(0f, true, true, true);
+            ps.Play(true);
+        }
     }
 
     bool TryFindNonOverlappingSpawn(out Vector2 spawnPos)

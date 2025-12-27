@@ -25,6 +25,11 @@ public class ElementCycle : MonoBehaviour
         return (ElementType)v;
     }
 
+    public ElementType PeekNext()
+    {
+        return (ElementType)cycle[index];
+    }
+
     void Shuffle()
     {
         for (int i = cycle.Length - 1; i > 0; i--)

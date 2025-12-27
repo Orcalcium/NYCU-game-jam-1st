@@ -140,16 +140,16 @@ MonoBehaviour:
   keepDistance: 0.25
   moveSpeed: 3.6
   particleSystem: {fileID: 0}
-  firePoint: {fileID: 0}
-  bulletSpeed: 10.5
-  fireCooldown: 0.6
   particleDamage: 1
   currentElement: 0
-  hp: 3
   weakpointCount: 3
   weakpointDots: {fileID: 0}
   weakpointDotPrefab: {fileID: 0}
   bodyRenderer: {fileID: 0}
+  pushMinDistance: 0.9
+  pushStrength: 6
+  pushMaxSpeed: 3.5
+  pushNeighborsLimit: 12
 --- !u!61 &-1067676966206754780
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -196,6 +196,24 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &8637967973486099064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 223523354737151428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d14621f68bedfd649ad772f445f61f8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyWeakpointDots
+  dotPrefab: {fileID: 5131191532854340797, guid: 9275b20762c45854cb94a555f80d3295, type: 3}
+  dotCount: 3
+  spacing: 0.22
+  localOffset: {x: 0, y: -0.55}
+  dotScale: 0.16
+  sortingOrder: 4
 --- !u!1001 &3431803857660165474
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -204,6 +222,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 112888676946515615}
     m_Modifications:
+    - target: {fileID: 33266709641337648, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: m_Flip.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: InitialModule.size3D
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: ColorBySpeedModule.enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: InitialModule.gravitySource
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: InitialModule.startSizeY.scalar
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: InitialModule.startSizeZ.scalar
+      value: 2.04
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: CollisionModule.multiplyColliderForceByParticleSpeed
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3691324608575198744, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
       propertyPath: m_Name
       value: Particle System
@@ -258,20 +308,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7122061576436325750, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
   m_PrefabInstance: {fileID: 3431803857660165474}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8637967973486099064
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 223523354737151428}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d14621f68bedfd649ad772f445f61f8b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyWeakpointDots
-  dotPrefab: {fileID: 5131191532854340797, guid: 9275b20762c45854cb94a555f80d3295, type: 3}
-  dotCount: 3
-  spacing: 0.22
-  localOffset: {x: 0, y: -0.55}
-  dotScale: 0.16
