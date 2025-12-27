@@ -10,13 +10,6 @@ namespace GameJam.Common
         Nature = 2
     }
 
-    public enum SkillKey
-    {
-        Q,
-        W,
-        E
-    }
-
     public static class GameDefs
     {
         public const int ElementCount = 3;
@@ -42,5 +35,11 @@ namespace GameJam.Common
                 default: return Color.white;
             }
         }
+    }
+
+    public interface IElementDamageable
+    {
+        bool CanBeHitBy(ElementType element, Object source);
+        void TakeElementHit(ElementType element, int damage, Object source);
     }
 }
