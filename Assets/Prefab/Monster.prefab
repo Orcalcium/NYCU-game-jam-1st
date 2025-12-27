@@ -122,7 +122,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!114 &6359003582360862701
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -260,6 +260,10 @@ PrefabInstance:
     - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
       propertyPath: CollisionModule.multiplyColliderForceByParticleSpeed
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1867764028036435151, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
+      propertyPath: EmissionModule.m_Bursts.Array.data[0].countCurve.scalar
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 3691324608575198744, guid: 4667f924f0c9d294580e94ae48886fe0, type: 3}
       propertyPath: m_Name

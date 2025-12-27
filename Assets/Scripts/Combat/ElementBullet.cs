@@ -14,6 +14,10 @@ public class ElementBullet : MonoBehaviour
     [Header("Visual")]
     public SpriteRenderer sr;
 
+    [Header("Collision")]
+    [Tooltip("Layers that will cause the bullet to despawn immediately (bitmask)")]
+    public LayerMask NoEffectMask;
+
     Rigidbody2D rb;
     float life;
     ElementType element;
@@ -71,8 +75,8 @@ public class ElementBullet : MonoBehaviour
     void OnTriggerEnter2D(Collider2D other)
     {
         if (!gameObject.activeInHierarchy) return;
-        // If the bullet hit a shield (layer 12), just despawn without processing damage
-        if (other != null && other.gameObject.layer == LayerMask.GetMask("Shield"))
+        // If the bullet hit a layer in NoEffectMask, just despawn without processing damage
+        if (other != null && ((NoEffectMask.value & (1 << other.gameObject.layer)) != 0))
         {
             Despawn();
             return;

@@ -263,7 +263,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         rb.simulated = true;
         rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.constraints = RigidbodyConstraints2D.None;
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         rb.WakeUp();

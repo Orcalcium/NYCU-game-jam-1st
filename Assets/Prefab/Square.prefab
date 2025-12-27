@@ -124,7 +124,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!114 &6359003582360862701
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -141,6 +141,10 @@ MonoBehaviour:
   stopDistance: 6.5
   keepDistance: 0.25
   moveSpeed: 3.6
+  moveTrigger: 0
+  activationDistance: 6
+  activationMinDistance: 2
+  activationMaxDistance: 8
   particleSystem: {fileID: 0}
   particleDamage: 1
   currentElement: 0
@@ -152,6 +156,9 @@ MonoBehaviour:
   pushStrength: 6
   pushMaxSpeed: 3.5
   pushNeighborsLimit: 12
+  separationPriority: 1
+  separationPriorityThreshold: 0.01
+  separationMaxSpeed: 0
 --- !u!61 &-1067676966206754780
 BoxCollider2D:
   m_ObjectHideFlags: 0
