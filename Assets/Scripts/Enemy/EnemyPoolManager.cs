@@ -1,10 +1,13 @@
 // File: Combat/EnemyPoolManager.cs
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using GameJam.Common;
 
 public class EnemyPoolManager : MonoBehaviour
 {
+    public static EnemyPoolManager Instance { get; private set; }
+
     [Header("Pool")]
     public EnemyShooter2D enemyPrefab;
     public int poolSize = 10;
@@ -25,16 +28,27 @@ public class EnemyPoolManager : MonoBehaviour
     public float emissionIntervalMin = 3f;
     public float emissionIntervalMax = 5f;
 
+    struct ParticleCollisionDefault
+    {
+        public bool enabled;
+        public LayerMask collidesWith;
+    }
+
     readonly List<EnemyShooter2D> pool = new();
+    readonly Dictionary<ParticleSystem, ParticleCollisionDefault> particleCollisionDefaults = new();
     float spawnTimer;
 
     void Awake()
     {
+        Instance = this;
+
         for (int i = 0; i < poolSize; i++)
         {
             EnemyShooter2D e = Instantiate(enemyPrefab, transform);
             e.gameObject.SetActive(false);
             pool.Add(e);
+
+            CacheParticleCollisionDefaults(e);
         }
     }
 
@@ -60,11 +74,76 @@ public class EnemyPoolManager : MonoBehaviour
         e.gameObject.SetActive(true);
         e.ResetFromPool(player, spawnPos, ElementType.Fire);
 
+        CacheParticleCollisionDefaults(e);
+
+        var pc = player != null ? player.GetComponent<PlayerController2D>() : null;
+        if (pc != null) OnPlayerElementChanged(pc.currentElement);
+
         float interval = Random.Range(emissionIntervalMin, emissionIntervalMax);
         StartCoroutine(ApplyEmissionIntervalAndRestartNextFrame(e.transform, interval));
     }
 
-    System.Collections.IEnumerator ApplyEmissionIntervalAndRestartNextFrame(Transform monsterRoot, float interval)
+    void CacheParticleCollisionDefaults(EnemyShooter2D e)
+    {
+        if (e == null) return;
+
+        var systems = e.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < systems.Length; i++)
+        {
+            var ps = systems[i];
+            if (ps == null) continue;
+
+            if (!particleCollisionDefaults.ContainsKey(ps))
+            {
+                var col = ps.collision;
+                particleCollisionDefaults[ps] = new ParticleCollisionDefault
+                {
+                    enabled = col.enabled,
+                    collidesWith = col.collidesWith
+                };
+            }
+        }
+    }
+
+    public void OnPlayerElementChanged(ElementType playerElement)
+    {
+        for (int i = 0; i < pool.Count; i++)
+        {
+            var e = pool[i];
+            if (e == null) continue;
+            if (!e.gameObject.activeInHierarchy) continue;
+
+            bool sameColor = e.currentElement == playerElement;
+
+            var systems = e.GetComponentsInChildren<ParticleSystem>(true);
+            for (int j = 0; j < systems.Length; j++)
+            {
+                var ps = systems[j];
+                if (ps == null) continue;
+
+                if (!particleCollisionDefaults.TryGetValue(ps, out var def))
+                {
+                    var col0 = ps.collision;
+                    def = new ParticleCollisionDefault { enabled = col0.enabled, collidesWith = col0.collidesWith };
+                    particleCollisionDefaults[ps] = def;
+                }
+
+                var collision = ps.collision;
+
+                if (sameColor)
+                {
+                    collision.enabled = false;
+                }
+                else
+                {
+                    collision.enabled = def.enabled;
+                    collision.collidesWith = def.collidesWith;
+                }
+            }
+        }
+    }
+
+    IEnumerator ApplyEmissionIntervalAndRestartNextFrame(Transform monsterRoot, float interval)
     {
         yield return null;
 
@@ -86,7 +165,6 @@ public class EnemyPoolManager : MonoBehaviour
                 for (int b = 0; b < bursts.Length; b++)
                 {
                     var burst = bursts[b];
-                    burst.time = interval;
                     burst.repeatInterval = interval;
                     bursts[b] = burst;
                 }

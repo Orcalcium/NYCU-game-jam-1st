@@ -58,8 +58,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         col.isTrigger = true;
 
         if (bodyRenderer == null) bodyRenderer = GetComponentInChildren<SpriteRenderer>(true);
-        
-        // Get particle system from children if not assigned
+
         if (particleSystem == null) particleSystem = GetComponentInChildren<ParticleSystem>(true);
 
         if (weakpointDots == null)
@@ -107,8 +106,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         }
 
         Vector2 v = desired * moveSpeed;
-
-        // ★ 座標推開：不做 Physics overlap / distance 計算
         v += ComputePositionPush(pos);
 
         float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
@@ -121,11 +118,10 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     {
         if (Time.frameCount != allEnemiesCacheFrame)
         {
-            allEnemiesCache = Object.FindObjectsByType<EnemyShooter2D>(
-                FindObjectsSortMode.None
-            );
+            allEnemiesCache = Object.FindObjectsByType<EnemyShooter2D>(FindObjectsSortMode.None);
             allEnemiesCacheFrame = Time.frameCount;
         }
+
         float minDist = Mathf.Max(0.01f, pushMinDistance);
         float minDist2 = minDist * minDist;
 
@@ -171,7 +167,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     {
         if (dead) return;
 
-        // Check if the collision is with a damageable object
         IElementDamageable damageable = other.GetComponent<IElementDamageable>();
         if (damageable != null)
         {
@@ -187,8 +182,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     {
         if (bodyRenderer == null) return;
         bodyRenderer.color = GameDefs.ElementToColor(currentElement);
-        
-        // Update particle system color if available
+
         if (particleSystem != null)
         {
             var main = particleSystem.main;
@@ -217,7 +211,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         BuildWeakpoints();
 
-        // 生成後先推開一次（只用座標比對）
         rb.position += ComputePositionPush(rb.position) * Time.fixedDeltaTime;
     }
 
@@ -270,8 +263,15 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
     public bool CanBeHitBy(ElementType element, Object source)
     {
-        // Can be hit by any element (including same color) as long as not dead
-        return !dead;
+        if (dead) return false;
+
+        var pc = source as PlayerController2D;
+        if (pc != null)
+        {
+            if (pc.currentElement == currentElement) return false;
+        }
+
+        return true;
     }
 
     public void TakeElementHit(ElementType element, int damage, Object source)

@@ -30,6 +30,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     Rigidbody2D rb;
     Camera cam;
+    Collider2D col;
 
     float dashTimer;
     float dashCd;
@@ -41,7 +42,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     Vector2 dashTargetPos;
     bool dashUseTarget;
 
-    // 固定 R_G_B（你專案的對應：Fire/Water/Nature）
     static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
     int cycleIndex;
 
@@ -51,15 +51,18 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         rb.gravityScale = 0f;
         rb.linearDamping = 8f;
 
+        col = GetComponent<Collider2D>();
+
         cam = Camera.main;
 
         if (bodyRenderer == null) bodyRenderer = GetComponentInChildren<SpriteRenderer>(true);
-
         if (firePoint == null) firePoint = transform;
 
         cycleIndex = GetCycleIndex(currentElement);
         currentElement = Cycle[cycleIndex];
         ApplyElementVisual();
+
+        EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
     }
 
     void Update()
@@ -73,6 +76,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (dashTimer <= 0f)
             {
                 invulnerable = false;
+                if (col != null) col.enabled = true;
             }
         }
 
@@ -98,6 +102,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                     rb.linearVelocity = Vector2.zero;
                     dashTimer = 0f;
                     invulnerable = false;
+                    if (col != null) col.enabled = true;
                     return;
                 }
 
@@ -112,6 +117,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                     rb.linearVelocity = Vector2.zero;
                     dashTimer = 0f;
                     invulnerable = false;
+                    if (col != null) col.enabled = true;
                     return;
                 }
 
@@ -152,6 +158,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             dashCd = dashCooldown;
             dashTimer = dashDuration;
             invulnerable = true;
+            if (col != null) col.enabled = false;
 
             Vector2 start = rb.position;
             dashStartPos = start;
@@ -184,7 +191,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (fireCd > 0f) return;
             fireCd = fireCooldown;
 
-            // 先用「當前顏色」射出子彈
             ElementType shotElement = currentElement;
 
             Vector2 pos = firePoint != null ? (Vector2)firePoint.position : (Vector2)transform.position;
@@ -193,10 +199,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (bulletPool != null)
                 bulletPool.Spawn(pos, dir, shotElement, this, bulletSpeed);
 
-            // 射完後固定切到下一個（R->G->B->R...）
             cycleIndex = (cycleIndex + 1) % Cycle.Length;
             currentElement = Cycle[cycleIndex];
             ApplyElementVisual();
+
+            EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
         }
     }
 
