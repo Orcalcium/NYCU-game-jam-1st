@@ -12,7 +12,8 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public float keepDistance = 0.25f;
 
     [Header("Move")]
-    public float moveSpeed = 3.6f;
+    [Tooltip("Base move speed for this enemy (lower is slower)")]
+    public float moveSpeed = 2.2f; // lowered default speed
 
     [Header("Shoot")]
     public new ParticleSystem particleSystem;
@@ -108,7 +109,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         Vector2 v = desired * moveSpeed;
 
-        // ¡¹ ®y¼Ð±À¶}¡G¤£°µ Physics overlap / distance ­pºâ
+        // ï¿½ï¿½ ï¿½yï¿½Ð±ï¿½ï¿½}ï¿½Gï¿½ï¿½ï¿½ï¿½ Physics overlap / distance ï¿½pï¿½ï¿½
         v += ComputePositionPush(pos);
 
         float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
@@ -217,7 +218,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         BuildWeakpoints();
 
-        // ¥Í¦¨«á¥ý±À¶}¤@¦¸¡]¥u¥Î®y¼Ð¤ñ¹ï¡^
+        // ï¿½Í¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½}ï¿½@ï¿½ï¿½ï¿½]ï¿½uï¿½Î®yï¿½Ð¤ï¿½ï¿½^
         rb.position += ComputePositionPush(rb.position) * Time.fixedDeltaTime;
     }
 
