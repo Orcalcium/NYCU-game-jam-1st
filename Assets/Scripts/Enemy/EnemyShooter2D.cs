@@ -20,6 +20,18 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     [Tooltip("Base move speed for this enemy (lower is slower)")]
     public float moveSpeed = 2.2f;
 
+    public enum MoveTriggerMode { Always, MoveWhenCloserThan, MoveWhenFartherThan, MoveWhenBetween }
+
+    [Header("Behavior")]
+    [Tooltip("Controls when the enemy will actively move relative to the target")] 
+    public MoveTriggerMode moveTrigger = MoveTriggerMode.Always;
+    [Tooltip("Distance threshold for the MoveWhenCloserThan/MoveWhenFartherThan modes")]
+    public float activationDistance = 6.0f;
+    [Tooltip("Minimum distance for MoveWhenBetween mode (exclusive)")]
+    public float activationMinDistance = 2.0f;
+    [Tooltip("Maximum distance for MoveWhenBetween mode (exclusive)")]
+    public float activationMaxDistance = 8.0f;
+
     [Header("Shoot")]
     public new ParticleSystem particleSystem;
     public int particleDamage = 1;
@@ -40,6 +52,14 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public float pushStrength = 6.0f;
     public float pushMaxSpeed = 3.5f;
     public int pushNeighborsLimit = 12;
+
+    [Header("Separation")]
+    [Tooltip("When enabled, enemies will prioritize separating from nearby neighbors before moving toward/away from the player")]
+    public bool separationPriority = true;
+    [Tooltip("Push magnitude threshold (in world units) above which separation takes priority")]
+    public float separationPriorityThreshold = 0.01f;
+    [Tooltip("Optional maximum speed to use while separating (0 = use pushMaxSpeed)")]
+    public float separationMaxSpeed = 0f; // 0 means use pushMaxSpeed
 
     Rigidbody2D rb;
     Collider2D col;
@@ -110,6 +130,30 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         Vector2 to = tpos - pos;
         float dist = to.magnitude;
 
+        // Compute separation push (based on other nearby enemies)
+        Vector2 separationPush = ComputePositionPush(pos);
+        if (separationPriority && separationPush.sqrMagnitude > (separationPriorityThreshold * separationPriorityThreshold))
+        {
+            // Prioritize separation: move away from neighbors until the push weakens
+            Vector2 sepVel = separationPush;
+            float sepMaxSpd = (separationMaxSpeed > 0f) ? separationMaxSpeed : pushMaxSpeed;
+            if (sepVel.sqrMagnitude > sepMaxSpd * sepMaxSpd) sepVel = sepVel.normalized * sepMaxSpd;
+            rb.linearVelocity = sepVel;
+            return;
+        }
+
+        // Movement activation check based on configured mode
+        bool shouldMove = true;
+        if (moveTrigger == MoveTriggerMode.MoveWhenCloserThan) shouldMove = dist < activationDistance;
+        else if (moveTrigger == MoveTriggerMode.MoveWhenFartherThan) shouldMove = dist > activationDistance;
+        else if (moveTrigger == MoveTriggerMode.MoveWhenBetween) shouldMove = (dist > activationMinDistance && dist < activationMaxDistance);
+
+        if (!shouldMove)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
         float minStop = Mathf.Max(0.01f, stopDistance - keepDistance);
         float maxStop = stopDistance + keepDistance;
 
@@ -129,7 +173,9 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         }
 
         Vector2 v = desired * moveSpeed;
-        v += ComputePositionPush(pos);
+
+        // Add small push to avoid overlaps while moving (non-priority)
+        v += separationPush;
 
         float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
         if (v.sqrMagnitude > maxSpd * maxSpd) v = v.normalized * maxSpd;
@@ -311,5 +357,13 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         dead = true;
         rb.linearVelocity = Vector2.zero;
         gameObject.SetActive(false);
+    }
+
+    void OnValidate()
+    {
+        // Ensure sensible ranges
+        if (activationMinDistance < 0f) activationMinDistance = 0f;
+        if (activationMaxDistance < 0f) activationMaxDistance = 0f;
+        if (activationMaxDistance < activationMinDistance) activationMaxDistance = activationMinDistance;
     }
 }
