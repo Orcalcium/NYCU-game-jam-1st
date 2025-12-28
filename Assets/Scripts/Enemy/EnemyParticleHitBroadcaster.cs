@@ -34,7 +34,7 @@ public class EnemyParticleHitBroadcaster : MonoBehaviour
 
         if (damageable == null) return;
 
-        if (damageable.CanBeHitBy(owner.currentElement, owner))
+        if (damageable.CanBeHitBy(owner.currentElement))
         {
             damageable.TakeElementHit(owner.currentElement, particleDamage, owner);
         }

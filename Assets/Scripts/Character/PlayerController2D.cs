@@ -299,7 +299,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             var dmg = other.GetComponentInParent<IElementDamageable>();
             if (dmg == null) continue;
 
-            bool canHit = dmg.CanBeHitBy(currentElement, this);
+            bool canHit = dmg.CanBeHitBy(currentElement);
             if (canHit)
             {
                 dmg.TakeElementHit(currentElement, dashDamage, this);
@@ -425,7 +425,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
     }
 
-    public bool CanBeHitBy(ElementType element, Object source)
+    public bool CanBeHitBy(ElementType element)
     {
         if (invulnerable) return false;
         if (element == currentElement) return false;
@@ -434,7 +434,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     public void TakeElementHit(ElementType element, int damage, Object source)
     {
-        if (!CanBeHitBy(element, source)) return;
+        if (!CanBeHitBy(element)) return;
 
         hp -= damage;
 

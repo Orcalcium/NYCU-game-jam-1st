@@ -322,22 +322,16 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         if (bodyRenderer != null) bodyRenderer.enabled = true;
     }
 
-    public bool CanBeHitBy(ElementType element, Object source)
+    public bool CanBeHitBy(ElementType element)
     {
         if (dead) return false;
-
-        var pc = source as PlayerController2D;
-        if (pc != null)
-        {
-            if (pc.currentElement == currentElement) return true;
-        }
-
+        if (element == currentElement) return true;
         return false;
     }
 
     public void TakeElementHit(ElementType element, int damage, Object source)
     {
-        if (!CanBeHitBy(element, source)) return;
+        if (!CanBeHitBy(element)) return;
         if (weakSequence == null || weakSequence.Length == 0) return;
 
         if (element != currentElement) return;

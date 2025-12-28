@@ -375,7 +375,7 @@ public class PlayerSkillCaster2D : MonoBehaviour
         bool canHit = false;
         try
         {
-            canHit = dmg.CanBeHitBy(element, source);
+            canHit = dmg.CanBeHitBy(element);
         }
         catch (Exception e)
         {
