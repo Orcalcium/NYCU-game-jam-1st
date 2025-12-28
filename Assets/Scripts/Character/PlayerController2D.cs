@@ -22,7 +22,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     [Header("Dash (Shift)")]
     public float dashSpeedMultiplier = 2.4f;
     public float dashDuration = 0.26f;
-    public float dashCooldown = 0.75f;
+    public float dashCooldown = 4f; // increased cooldown per request
     public float dashMaxDistance = 4.5f;
 
     [Header("Dash Damage (Along Path)")]
