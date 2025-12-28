@@ -9,7 +9,13 @@ using Object = UnityEngine.Object;
 [RequireComponent(typeof(Collider2D))]
 public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 {
-    public event Action<Color> ChangeColor;
+    [Header("Difficulty & Spawning")]
+    [Tooltip("Difficulty value of this enemy (higher = stronger/rarer)")]
+    public float difficulty = 1f;
+    [Tooltip("Minimum threshold required for this enemy to spawn")]
+    public float startThreshold = 0f;
+
+    public event System.Action<Color> ChangeColor;
 
     [Header("Target")]
     public Transform target;

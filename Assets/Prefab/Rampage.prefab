@@ -138,6 +138,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ca1671df6a829840a327ce29b2f288a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyShooter2D
+  difficulty: 7
+  startThreshold: 60
   target: {fileID: 0}
   stopDistance: 6.5
   keepDistance: 0.25
@@ -146,10 +148,16 @@ MonoBehaviour:
   activationDistance: 6
   activationMinDistance: 2
   activationMaxDistance: 8
+  wallLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  wallCastPadding: 0.03
+  wallProbeMultiplier: 1.25
   movementMode: 1
-  randomMoveSpeed: 2
-  randomChangeIntervalMin: 0.5
-  randomChangeIntervalMax: 1.5
+  rampageMoveSpeed: 2
+  rampageChangeIntervalMin: 0.5
+  rampageChangeIntervalMax: 1.5
+  rampageAxisMode: 0
   particleSystem: {fileID: 0}
   particleDamage: 1
   currentElement: 0
@@ -164,6 +172,8 @@ MonoBehaviour:
   separationPriority: 1
   separationPriorityThreshold: 0.01
   separationMaxSpeed: 0
+  clampX: 13.5
+  clampY: 7.5
 --- !u!61 &-1067676966206754780
 BoxCollider2D:
   m_ObjectHideFlags: 0

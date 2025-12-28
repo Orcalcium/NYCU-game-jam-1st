@@ -18,13 +18,40 @@ public class EnemyPoolManager : MonoBehaviour
     
     [Tooltip("Maximum pool size per enemy type")]
     public int poolMaxSizePerType = 20;
+
+    [Header("Difficulty System")]
+    [Tooltip("Starting value for low difficulty threshold")]
+    public float baseDifficultyLow = 5f;
     
-    public int maxAliveEnemies = 10;
+    [Tooltip("Starting value for high difficulty threshold")]
+    public float baseDifficultyHigh = 10f;
+    
+    [Tooltip("How fast difficulty thresholds increase per second")]
+    public float difficultyGrowthRate = 0.5f;
+    
+    [Tooltip("Multiplier for enemy start threshold (enemy spawns when low >= startThreshold * ratio)")]
+    public float startThresholdRatio = 1.0f;
+    
+    [Tooltip("Maximum total difficulty allowed on field")]
+    public int maxTotalDifficulty = 50;
+
+    [Header("Wave Spawning")]
+    [Tooltip("How many spawn attempts per wave")]
+    public int waveSpawnAttempts = 5;
+    
+    [Tooltip("Randomness factor (0 = always pick hardest available, 1 = fully random)")]
+    [Range(0f, 1f)]
+    public float waveRandomness = 0.3f;
+    
+    [Tooltip("Time between wave spawn checks (seconds)")]
+    public float waveCheckInterval = 2f;
+    
+    [Tooltip("Delay before first wave spawns (seconds)")]
+    public float initialSpawnDelay = 3f;
 
     [Header("Spawn")]
     public Transform[] spawnPoints;
     public Transform player;
-    public float spawnInterval = 2.5f;
     [Tooltip("Multiplier applied to enemy moveSpeed when spawned (1 = use prefab default)")]
     public float spawnMoveSpeedMultiplier = 1.0f;
 
@@ -51,8 +78,15 @@ public class EnemyPoolManager : MonoBehaviour
     private List<EnemyShooter2D> allActiveEnemies = new List<EnemyShooter2D>();
     
     private Dictionary<ParticleSystem, ParticleCollisionDefault> particleCollisionDefaults = new Dictionary<ParticleSystem, ParticleCollisionDefault>();
-    
-    private float spawnTimer;
+
+    [Header("Debug")]
+    // Difficulty tracking
+    [SerializeField] private float currentDifficulty = 0f;
+    [SerializeField] private float difficultyThresholdLow;
+    [SerializeField] private float difficultyThresholdHigh;
+    private float gameTime = 0f;
+    private float waveCheckTimer = 0f;
+    private bool hasStartedSpawning = false;
 
     void Awake()
     {
@@ -65,6 +99,10 @@ public class EnemyPoolManager : MonoBehaviour
             enabled = false;
             return;
         }
+
+        // Initialize difficulty thresholds
+        difficultyThresholdLow = baseDifficultyLow;
+        difficultyThresholdHigh = baseDifficultyHigh;
 
         // Initialize a pool for each enemy type
         foreach (var prefab in enemyPrefabs)
@@ -87,16 +125,188 @@ public class EnemyPoolManager : MonoBehaviour
 
             enemyPools[prefab] = pool;
         }
+
+        Debug.Log($"[EnemyPoolManager] Initialized with {enemyPools.Count} enemy types");
     }
 
     void Update()
     {
-        spawnTimer -= Time.deltaTime;
-        if (spawnTimer <= 0f)
+        // Update game time and difficulty thresholds
+        gameTime += Time.deltaTime;
+        UpdateDifficultyThresholds();
+
+        // Update current difficulty based on active enemies
+        CalculateCurrentDifficulty();
+
+        // Wait for initial delay before starting spawns
+        if (!hasStartedSpawning)
         {
-            TrySpawn();
-            spawnTimer = spawnInterval;
+            if (gameTime >= initialSpawnDelay)
+            {
+                hasStartedSpawning = true;
+                waveCheckTimer = 0f; // Spawn immediately after delay
+            }
+            return;
         }
+
+        // Check if we should spawn a wave
+        waveCheckTimer -= Time.deltaTime;
+        if (waveCheckTimer <= 0f)
+        {
+            waveCheckTimer = waveCheckInterval;
+            
+            if (ShouldSpawnWave())
+            {
+                SpawnWave();
+            }
+        }
+    }
+
+    private void UpdateDifficultyThresholds()
+    {
+        difficultyThresholdLow = baseDifficultyLow + (gameTime * difficultyGrowthRate * 0.5f);
+        difficultyThresholdHigh = baseDifficultyHigh + (gameTime * difficultyGrowthRate);
+    }
+
+    private void CalculateCurrentDifficulty()
+    {
+        currentDifficulty = 0f;
+        
+        // Clean up null/inactive enemies
+        allActiveEnemies.RemoveAll(e => e == null || !e.gameObject.activeInHierarchy);
+        
+        // Sum difficulty of all active enemies
+        foreach (var enemy in allActiveEnemies)
+        {
+            if (enemy != null && enemy.gameObject.activeInHierarchy)
+            {
+                currentDifficulty += enemy.difficulty;
+            }
+        }
+    }
+
+    private bool ShouldSpawnWave()
+    {
+        return currentDifficulty < difficultyThresholdLow;
+    }
+
+    private void SpawnWave()
+    {
+        Debug.Log($"[EnemyPoolManager] Spawning wave - Current: {currentDifficulty:F1}, Target: {difficultyThresholdHigh:F1}");
+        
+        int spawned = 0;
+        int attempts = 0;
+        
+        while (currentDifficulty < difficultyThresholdHigh && attempts < waveSpawnAttempts)
+        {
+            attempts++;
+            
+            // Get eligible enemies
+            List<EnemyShooter2D> eligible = GetEligibleEnemies();
+            
+            if (eligible.Count == 0)
+            {
+                Debug.LogWarning("[EnemyPoolManager] No eligible enemies to spawn!");
+                break;
+            }
+            
+            // Select random enemy from eligible list
+            EnemyShooter2D selectedPrefab = SelectRandomEnemy(eligible);
+            
+            if (selectedPrefab == null) continue;
+            
+            // Check if spawning would exceed max difficulty
+            if (currentDifficulty + selectedPrefab.difficulty > maxTotalDifficulty)
+            {
+                Debug.Log($"[EnemyPoolManager] Would exceed max difficulty ({maxTotalDifficulty}), stopping wave");
+                break;
+            }
+            
+            // Try to spawn
+            if (TrySpawnEnemy(selectedPrefab))
+            {
+                spawned++;
+                currentDifficulty += selectedPrefab.difficulty;
+            }
+        }
+        
+        Debug.Log($"[EnemyPoolManager] Wave complete - Spawned {spawned} enemies, Current difficulty: {currentDifficulty:F1}");
+    }
+
+    private List<EnemyShooter2D> GetEligibleEnemies()
+    {
+        List<EnemyShooter2D> eligible = new List<EnemyShooter2D>();
+        
+        float threshold = gameTime;
+        
+        foreach (var prefab in enemyPools.Keys)
+        {
+            if (prefab.startThreshold <= threshold)
+            {
+                eligible.Add(prefab);
+            }
+        }
+        
+        return eligible;
+    }
+
+    private EnemyShooter2D SelectRandomEnemy(List<EnemyShooter2D> eligible)
+    {
+        if (eligible.Count == 0) return null;
+        if (eligible.Count == 1) return eligible[0];
+        
+        // Apply randomness
+        if (waveRandomness >= 1f || Random.value < waveRandomness)
+        {
+            // Fully random selection
+            return eligible[Random.Range(0, eligible.Count)];
+        }
+        else
+        {
+            // Weighted selection based on difficulty (prefer harder enemies as threshold grows)
+            float totalWeight = 0f;
+            foreach (var e in eligible)
+            {
+                totalWeight += e.difficulty;
+            }
+            
+            float rand = Random.Range(0f, totalWeight);
+            float cumulative = 0f;
+            
+            foreach (var e in eligible)
+            {
+                cumulative += e.difficulty;
+                if (rand <= cumulative)
+                {
+                    return e;
+                }
+            }
+            
+            return eligible[eligible.Count - 1];
+        }
+    }
+
+    private bool TrySpawnEnemy(EnemyShooter2D prefab)
+    {
+        if (!enemyPools.TryGetValue(prefab, out var pool)) return false;
+        
+        if (!TryFindNonOverlappingSpawn(out Vector2 spawnPos)) return false;
+
+        EnemyShooter2D e = pool.Get();
+        e.ResetFromPool(player, spawnPos, ElementType.Fire);
+        
+        // Apply spawn-time speed multiplier
+        e.moveSpeed *= spawnMoveSpeedMultiplier;
+
+        CacheParticleCollisionDefaults(e);
+
+        var pc = player != null ? player.GetComponent<PlayerController2D>() : null;
+        if (pc != null) OnPlayerElementChanged(pc.currentElement);
+
+        float interval = Random.Range(emissionIntervalMin, emissionIntervalMax);
+        StartCoroutine(ApplyEmissionIntervalAndRestartNextFrame(e.transform, interval));
+        
+        return true;
     }
 
     private EnemyShooter2D CreateEnemy(EnemyShooter2D prefab)
@@ -120,6 +330,9 @@ public class EnemyPoolManager : MonoBehaviour
     {
         enemy.gameObject.SetActive(false);
         allActiveEnemies.Remove(enemy);
+        
+        // Recalculate difficulty when enemy despawns
+        CalculateCurrentDifficulty();
     }
 
     private void OnDestroyEnemy(EnemyShooter2D enemy)
@@ -129,35 +342,6 @@ public class EnemyPoolManager : MonoBehaviour
             allActiveEnemies.Remove(enemy);
             Destroy(enemy.gameObject);
         }
-    }
-
-    void TrySpawn()
-    {
-        if (GetAliveCount() >= maxAliveEnemies) return;
-
-        // Pick a random enemy type with equal probability
-        if (enemyPools.Count == 0) return;
-
-        var prefabKeys = new List<EnemyShooter2D>(enemyPools.Keys);
-        EnemyShooter2D selectedPrefab = prefabKeys[Random.Range(0, prefabKeys.Count)];
-
-        if (!enemyPools.TryGetValue(selectedPrefab, out var pool)) return;
-
-        if (!TryFindNonOverlappingSpawn(out Vector2 spawnPos)) return;
-
-        EnemyShooter2D e = pool.Get();
-        e.ResetFromPool(player, spawnPos, ElementType.Fire);
-        
-        // Apply spawn-time speed multiplier so designers can globally slow/speed enemies
-        e.moveSpeed *= spawnMoveSpeedMultiplier;
-
-        CacheParticleCollisionDefaults(e);
-
-        var pc = player != null ? player.GetComponent<PlayerController2D>() : null;
-        if (pc != null) OnPlayerElementChanged(pc.currentElement);
-
-        float interval = Random.Range(emissionIntervalMin, emissionIntervalMax);
-        StartCoroutine(ApplyEmissionIntervalAndRestartNextFrame(e.transform, interval));
     }
 
     void CacheParticleCollisionDefaults(EnemyShooter2D e)
@@ -288,13 +472,6 @@ public class EnemyPoolManager : MonoBehaviour
         return false;
     }
 
-    int GetAliveCount()
-    {
-        // Clean up null references
-        allActiveEnemies.RemoveAll(e => e == null || !e.gameObject.activeInHierarchy);
-        return allActiveEnemies.Count;
-    }
-
     /// <summary>
     /// Release an enemy back to its appropriate pool.
     /// </summary>
@@ -326,4 +503,21 @@ public class EnemyPoolManager : MonoBehaviour
         enemyPools.Clear();
         allActiveEnemies.Clear();
     }
+
+#if UNITY_EDITOR
+    void OnGUI()
+    {
+        // Debug display
+        if (!Application.isPlaying) return;
+        
+        GUILayout.BeginArea(new Rect(10, 10, 300, 200));
+        GUILayout.Label($"<b>Enemy Difficulty System</b>", new GUIStyle(GUI.skin.label) { richText = true });
+        GUILayout.Label($"Current Difficulty: {currentDifficulty:F1}");
+        GUILayout.Label($"Low Threshold: {difficultyThresholdLow:F1}");
+        GUILayout.Label($"High Threshold: {difficultyThresholdHigh:F1}");
+        GUILayout.Label($"Active Enemies: {allActiveEnemies.Count}");
+        GUILayout.Label($"Game Time: {gameTime:F1}s");
+        GUILayout.EndArea();
+    }
+#endif
 }

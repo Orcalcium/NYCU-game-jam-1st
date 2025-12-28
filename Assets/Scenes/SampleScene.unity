@@ -1226,9 +1226,17 @@ MonoBehaviour:
   - {fileID: 6359003582360862701, guid: b07b0a62e3ab2db4da93ff68d4660859, type: 3}
   - {fileID: 6359003582360862701, guid: afec2f95ba90a3a46a436823a61d40af, type: 3}
   - {fileID: 6359003582360862701, guid: 887d8db84d9174b4b978b7f7789b050e, type: 3}
+  - {fileID: 6359003582360862701, guid: b415252e2e01f77499bfe9e4974e361a, type: 3}
   poolCapacityPerType: 5
   poolMaxSizePerType: 20
-  maxAliveEnemies: 10
+  baseDifficultyLow: 2.5
+  baseDifficultyHigh: 5
+  difficultyGrowthRate: 0.4
+  startThresholdRatio: 0
+  maxTotalDifficulty: 50
+  waveSpawnAttempts: 5
+  waveRandomness: 0.3
+  waveCheckInterval: 2
   spawnPoints:
   - {fileID: 1287435978}
   - {fileID: 1041150469}
@@ -1243,7 +1251,6 @@ MonoBehaviour:
   - {fileID: 326220700}
   - {fileID: 1090038180}
   player: {fileID: 556756410}
-  spawnInterval: 2.5
   spawnMoveSpeedMultiplier: 1
   enemyLayer:
     serializedVersion: 2
@@ -1253,6 +1260,9 @@ MonoBehaviour:
   spawnJitterRadius: 0.6
   emissionIntervalMin: 3
   emissionIntervalMax: 5
+  currentDifficulty: 0
+  difficultyThresholdLow: 0
+  difficultyThresholdHigh: 0
 --- !u!1 &931565572
 GameObject:
   m_ObjectHideFlags: 0
