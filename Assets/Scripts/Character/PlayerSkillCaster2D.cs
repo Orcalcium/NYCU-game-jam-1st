@@ -225,6 +225,59 @@ public class PlayerSkillCaster2D : MonoBehaviour
         return true;
     }
 
+    // Spawn a pierce bullet immediately without checking or setting the pierce skill cooldown.
+    // This is intended for burst fire where the outer controller handles cooldown and element cycling.
+    public bool SpawnPierceImmediate(Vector2 origin, Vector2 dir, ElementType elem)
+    {
+        if (bulletPool == null || firePoint == null)
+        {
+            Debug.LogError($"{LOG_PREFIX} SpawnPierceImmediate missing refs. bulletPool={(bulletPool ? "OK" : "NULL")} firePoint={(firePoint ? "OK" : "NULL")}", this);
+            return false;
+        }
+
+        var bulletGO = bulletPool.Spawn(origin, dir, elem, player);
+        if (bulletGO == null)
+        {
+            Debug.LogError($"{LOG_PREFIX} SpawnPierceImmediate bulletPool.Spawn returned NULL", this);
+            return false;
+        }
+
+        bulletGO.transform.position = firePoint.position;
+
+        Debug.Log($"{LOG_PREFIX} SpawnPierceImmediate spawned bullet='{bulletGO.name}' at {firePoint.position}, elem={elem}, dmg={pierceDamage}, speed={pierceBulletSpeed}", bulletGO);
+
+        var eb = bulletGO.GetComponent<ElementBullet>();
+        if (eb != null)
+        {
+            eb.damage = pierceDamage;
+            eb.canPierceUnits = true;
+            eb.maxPierceHits = pierceMaxHits;
+            eb.Init(bulletPool, firePoint.position, dir, elem, player != null ? (UnityEngine.Object)player : this, pierceBulletSpeed, true, pierceMaxHits);
+            Debug.Log($"{LOG_PREFIX} SpawnPierceImmediate used ElementBullet.Init (ElementBullet found).", bulletGO);
+            return true;
+        }
+
+        bulletGO.transform.rotation = Quaternion.FromToRotation(Vector3.right, new Vector3(dir.x, dir.y, 0f));
+        var rb2d = bulletGO.GetComponent<Rigidbody2D>();
+        if (rb2d != null)
+        {
+            rb2d.linearVelocity = dir * pierceBulletSpeed;
+            Debug.Log($"{LOG_PREFIX} SpawnPierceImmediate set bullet Rigidbody2D.linearVelocity={rb2d.linearVelocity}", bulletGO);
+        }
+        else
+        {
+            Debug.LogWarning($"{LOG_PREFIX} SpawnPierceImmediate bullet has no Rigidbody2D.", bulletGO);
+        }
+
+        TrySetFieldOrProperty(bulletGO, "currentElement", elem);
+        TrySetFieldOrProperty(bulletGO, "element", elem);
+        TrySetFieldOrProperty(bulletGO, "damage", pierceDamage);
+        TrySetFieldOrProperty(bulletGO, "canPierceUnits", true);
+        TrySetFieldOrProperty(bulletGO, "maxPierceHits", pierceMaxHits);
+
+        return true;
+    }
+
     bool TryCastBlink(Vector2 origin, Vector2 dir, ElementType elem)
     {
         if (Time.time < nextBlinkTime)

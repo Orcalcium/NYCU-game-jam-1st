@@ -202,6 +202,15 @@ public class ElementBullet : MonoBehaviour
             return;
         }
 
+        // If the bullet hit an enemy (EnemyShooter2D), always despawn after dealing damage
+        if (dmg is EnemyShooter2D)
+        {
+            sb.AppendLine("Hit an enemy (EnemyShooter2D), despawn.");
+            Debug.Log(sb.ToString());
+            Despawn();
+            return;
+        }
+
         if (canPierceUnits)
         {
             pierceHitCount++;
