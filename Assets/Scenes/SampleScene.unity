@@ -1227,6 +1227,7 @@ MonoBehaviour:
   - {fileID: 6359003582360862701, guid: afec2f95ba90a3a46a436823a61d40af, type: 3}
   - {fileID: 6359003582360862701, guid: 887d8db84d9174b4b978b7f7789b050e, type: 3}
   - {fileID: 6359003582360862701, guid: b415252e2e01f77499bfe9e4974e361a, type: 3}
+  - {fileID: 6359003582360862701, guid: 59f749ba82ed13f468e0ce39693ec5b8, type: 3}
   poolCapacityPerType: 5
   poolMaxSizePerType: 20
   baseDifficultyLow: 2.5
@@ -1237,6 +1238,7 @@ MonoBehaviour:
   waveSpawnAttempts: 5
   waveRandomness: 0.3
   waveCheckInterval: 2
+  initialSpawnDelay: 3
   spawnPoints:
   - {fileID: 1287435978}
   - {fileID: 1041150469}
