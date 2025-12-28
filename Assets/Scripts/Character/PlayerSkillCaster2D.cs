@@ -1,5 +1,6 @@
 ﻿// File: Player/PlayerSkillCaster2D.cs
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -49,6 +50,11 @@ public class PlayerSkillCaster2D : MonoBehaviour
     [SerializeField] private float aoeRadius = 2.2f;
     [SerializeField] private int aoeDamage = 1;
     [SerializeField] private float aoeCooldown = 0.9f;
+    [SerializeField] private float aoeCastDelay = 1.0f; // seconds before AoE takes effect
+    [Header("AoE Indicator")]
+    [SerializeField] private float aoeIndicatorLineWidth = 0.06f;
+    [SerializeField] private int aoeIndicatorSegments = 48;
+    [SerializeField] private int aoeIndicatorSortingOrder = 210;
 
     float nextPierceTime;
     float nextBlinkTime;
@@ -335,26 +341,104 @@ public class PlayerSkillCaster2D : MonoBehaviour
         float dist = delta.magnitude;
         if (dist > aoeMaxCastRange) aim = casterPos + delta / dist * aoeMaxCastRange;
 
-        Collider2D[] cols = Physics2D.OverlapCircleAll(aim, aoeRadius, damageLayers);
+        // Start delayed AoE: show an indicator and apply damage after a short delay while the indicator fills
+        StartCoroutine(DoAoeDelayed(aim, elem, aoeCastDelay, aoeRadius, aoeDamage, source));
+        return true;
+    }
+
+    IEnumerator DoAoeDelayed(Vector2 center, ElementType elem, float delay, float radius, int damage, UnityEngine.Object source)
+    {
+        // Create indicator GameObject using LineRenderer (partial arc filling)
+        var go = new GameObject("AoEIndicator");
+        go.transform.position = new Vector3(center.x, center.y, 0f);
+
+        var lr = go.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.loop = false;
+        lr.numCapVertices = 4;
+        lr.numCornerVertices = 4;
+        lr.startWidth = aoeIndicatorLineWidth;
+        lr.endWidth = aoeIndicatorLineWidth;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.sortingOrder = aoeIndicatorSortingOrder;
+
+        Color c = ElementToColor(elem);
+        lr.startColor = c;
+        lr.endColor = c;
+
+        int segments = Mathf.Max(8, aoeIndicatorSegments);
+
+        float t = 0f;
+        while (t < delay)
+        {
+            float progress = Mathf.Clamp01(t / delay);
+            DrawArc(lr, center, radius, segments, progress);
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        // final full circle
+        DrawArc(lr, center, radius, segments, 1f);
+
+        // Apply damage now
+        Collider2D[] cols = Physics2D.OverlapCircleAll(center, radius, damageLayers);
 
         _hitIds.Clear();
 
         for (int i = 0; i < cols.Length; i++)
         {
-            var c = cols[i];
-            if (!c) continue;
+            var ccol = cols[i];
+            if (!ccol) continue;
 
-            int id = c.GetInstanceID();
+            int id = ccol.GetInstanceID();
             if (_hitIds.Contains(id)) continue;
             _hitIds.Add(id);
 
-            var targetGO = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
+            var targetGO = ccol.attachedRigidbody ? ccol.attachedRigidbody.gameObject : ccol.gameObject;
             if (!IsSameElementTarget(targetGO, elem)) continue;
 
-            ApplyElementDamage_ExactInterface(targetGO, c, elem, aoeDamage, source);
+            ApplyElementDamage_ExactInterface(targetGO, ccol, elem, damage, source);
         }
 
-        return true;
+        // Optionally a short linger then destroy
+        yield return new WaitForSeconds(0.15f);
+        GameObject.Destroy(go);
+    }
+
+    void DrawArc(LineRenderer lr, Vector2 center, float radius, int segments, float progress)
+    {
+        progress = Mathf.Clamp01(progress);
+        if (progress >= 1f - 1e-6f)
+        {
+            // Full circle: use looped line with exactly 'segments' points
+            lr.loop = true;
+            int points = Mathf.Max(8, segments);
+            lr.positionCount = points;
+            for (int i = 0; i < points; i++)
+            {
+                float frac = (float)i / points; // avoid repeating point at the end
+                float angle = Mathf.Deg2Rad * (frac * 360f);
+                float x = center.x + Mathf.Cos(angle) * radius;
+                float y = center.y + Mathf.Sin(angle) * radius;
+                lr.SetPosition(i, new Vector3(x, y, 0f));
+            }
+        }
+        else
+        {
+            lr.loop = false;
+            float maxAngle = 360f * progress;
+            int points = Mathf.Max(2, Mathf.CeilToInt(segments * progress) + 1);
+
+            lr.positionCount = points;
+            for (int i = 0; i < points; i++)
+            {
+                float frac = (float)i / (points - 1);
+                float angle = Mathf.Deg2Rad * (frac * maxAngle);
+                float x = center.x + Mathf.Cos(angle) * radius;
+                float y = center.y + Mathf.Sin(angle) * radius;
+                lr.SetPosition(i, new Vector3(x, y, 0f));
+            }
+        }
     }
 
     // ===== Space Hold Blink Implementation =====

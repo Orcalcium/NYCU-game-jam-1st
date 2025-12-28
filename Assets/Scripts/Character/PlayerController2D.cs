@@ -32,83 +32,82 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     [Header("Shoot (Left Click)")]
     public BulletPool bulletPool;
-    public Transform firePoint;
-    public float bulletSpeed = 14f;
-    public float fireCooldown = 0.12f;
-    [Tooltip("Number of bullets in one burst")]
-    public int burstCount = 3;
-    [Tooltip("Time between bullets inside a burst (seconds)")]
-    public float burstInterval = 0.05f;
+        void StartBlinking()
+        {
+            if (blinkCoroutine != null)
+            {
+                StopCoroutine(blinkCoroutine);
+            }
+            blinkCoroutine = StartCoroutine(BlinkCoroutine());
+        }
 
-    [Header("State")]
-    public ElementType currentElement = ElementType.Fire;
-    public int hp = 3;
-    private int maxHp = 3;
+        void StopBlinking()
+        {
+            if (blinkCoroutine != null)
+            {
+                StopCoroutine(blinkCoroutine);
+                blinkCoroutine = null;
+            }
 
-    [Header("Invincibility")]
-    [Tooltip("Duration of invincibility after taking damage (seconds)")]
-    public float invinciblePeriod = 1.5f;
-    [Tooltip("Animation curve for alpha fade during invincibility (0 = transparent, 1 = opaque)")]
-    public AnimationCurve blinkCurve = AnimationCurve.Linear(0, 1, 1, 1);
+            // Ensure sprite is fully visible
+            if (bodyRenderer != null)
+            {
+                Color c = bodyRenderer.color;
+                c.a = 1f;
+                bodyRenderer.color = c;
+            }
+        }
 
-    [Header("Visual")]
-    public SpriteRenderer bodyRenderer;
+        IEnumerator BlinkCoroutine()
+        {
+            float elapsed = 0f;
 
-    [Header("Camera")]
-    public float cameraDamping = 1f;
-    public float cameraOrthoSize = 8f;
-    [Tooltip("If enabled, Player will automatically configure Main Camera to follow the player at Awake(). Disabled by default so you can assign/adjust the camera manually.")]
-    public bool autoSetupCamera = false;
+            while (invincibleTimer > 0f)
+            {
+                elapsed += Time.deltaTime;
+            
+                // Normalize time to 0-1 range based on total invincible period
+                float t = elapsed / invinciblePeriod;
+            
+                // Evaluate curve to get alpha value
+                float alpha = blinkCurve.Evaluate(t);
+            
+                // Apply alpha while preserving RGB
+                if (bodyRenderer != null)
+                {
+                    Color c = bodyRenderer.color;
+                    c.a = Mathf.Clamp01(alpha);
+                    bodyRenderer.color = c;
+                }
 
-    [Header("Clamp (World Bounds)")]
-    public float clampX = 13.5f;
-    public float clampY = 7.5f;
+                yield return null;
+            }
 
-    [Header("Skill Aim (Slow Time + Indicator)")]
-    public float aimTimeScale = 0.15f;
-    public float indicatorLineWidth = 0.06f;
-    public int indicatorCircleSegments = 48;
+            // Ensure sprite is fully visible when done
+            if (bodyRenderer != null)
+            {
+                Color c = bodyRenderer.color;
+                c.a = 1f;
+                bodyRenderer.color = c;
+            }
 
-    [Header("Element Cycle (3-Bag + UI)")]
-    [Tooltip("Which element cycling behavior to use after a skill / burst.")]
-    public ElementCycleMode elementCycleMode = ElementCycleMode.Bag3;
+            blinkCoroutine = null;
+        }
 
-    [Tooltip("UI icon for current element")]
-    public Image elementNowUI;
-    [Tooltip("UI icon for next element")]
-    public Image elementNext1UI;
-    [Tooltip("UI icon for next-next element")]
-    public Image elementNext2UI;
-
-    [Tooltip("Optional sprites. If not assigned, UI will use element color.")]
-    public Sprite fireSprite;
-    public Sprite waterSprite;
-    public Sprite natureSprite;
-
-    Rigidbody2D rb;
-    Camera cam;
-    Collider2D col;
-
-    float dashTimer;
-    float dashCd;
-    float fireCd;
-    [SerializeField]
-    bool invulnerable;
-    bool isBursting;
-    float invincibleTimer;
-    Coroutine blinkCoroutine;
-
-    Vector2 dashDir;
-    Vector2 dashStartPos;
-    Vector2 dashTargetPos;
-    bool dashUseTarget;
-
-    public PlayerSkillCaster2D PlayerSkillCaster2D;
-
-    static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
-
-    // Kept for compatibility with the other branch¡¦s logic (index-tracking),
-    // even though the bag mode is the default cycle behavior.
+        /// <summary>
+        /// Heal the player by 'amount' hit points (clamped to maxHp) and update the UI.
+        /// </summary>
+        public void Heal(int amount)
+        {
+            if (amount <= 0) return;
+            int prevHp = hp;
+            hp = Mathf.Clamp(hp + amount, 0, maxHp);
+            if (GameJam.UI.GameUIManager.Instance != null)
+            {
+                GameJam.UI.GameUIManager.Instance.UpdateHp(hp);
+            }
+            Debug.Log($"[Player] Healed: +{(hp - prevHp)} hp (now {hp}/{maxHp})");
+        }
     int cycleIndex;
 
     // 3-bag like Tetris: each bag contains all 3 elements exactly once, shuffled.
@@ -567,10 +566,20 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         }
     }
 
+    /// <summary>
+    /// Returns the queued element at offset from the current head (0 = current, 1 = next, ...).
+    /// Falls back to currentElement if the queue is empty.
+    /// </summary>
+    public ElementType GetQueuedElement(int offset)
+    {
+        if (bag == null || bag.Count == 0) return currentElement;
+        int idx = (bagPos + offset) % bag.Count;
+        return bag[Mathf.Clamp(idx, 0, bag.Count - 1)];
+    }
+
     void UpdateElementQueueUI()
     {
         if (bag.Count == 0) return;
-
         ElementType now = bag[Mathf.Clamp(bagPos, 0, bag.Count - 1)];
         ElementType next1 = bag[(bagPos + 1) % bag.Count];
         ElementType next2 = bag[(bagPos + 2) % bag.Count];
@@ -578,6 +587,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         ApplyElementUI(elementNowUI, now);
         ApplyElementUI(elementNext1UI, next1);
         ApplyElementUI(elementNext2UI, next2);
+    }
+
+    void ApplyElementUIList(Image[] imgs, ElementType e)
+    {
+        // removed multi-image helper (reverted to single-image UI)
+        return;
     }
 
     void ApplyElementUI(Image img, ElementType e)
@@ -636,6 +651,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         }
     }
 
+<<<<<<< HEAD
     void StartBlinking()
     {
         if (blinkCoroutine != null)
@@ -697,6 +713,23 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         blinkCoroutine = null;
     }
+=======
+    /// <summary>
+    /// Heal the player by 'amount' hit points (clamped to maxHp) and update the UI.
+    /// </summary>
+    public void Heal(int amount)
+    {
+        if (amount <= 0) return;
+        int prevHp = hp;
+        hp = Mathf.Clamp(hp + amount, 0, maxHp);
+        if (GameJam.UI.GameUIManager.Instance != null)
+        {
+            GameJam.UI.GameUIManager.Instance.UpdateHp(hp);
+        }
+        Debug.Log($"[Player] Healed: +{(hp - prevHp)} hp (now {hp}/{maxHp})");
+    }
+
+>>>>>>> 6b42ab7 (feat: Add Healpack and HealpackSpawner functionality with healing mechanics and spawn logic)
     void ApplyAimSlowTime(bool enabled)
     {
         if (enabled)
