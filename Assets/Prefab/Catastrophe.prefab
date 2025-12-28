@@ -236,6 +236,6 @@ MonoBehaviour:
   zonePrefab: {fileID: 8218445712826916484, guid: 06f8a6713bae1be4683484338b11ea24, type: 3}
   poolCapacity: 5
   poolMaxSize: 10
-  attackInterval: 7
+  attackInterval: 3
   spawnOffset: {x: 0, y: 0, z: 0}
   autoStart: 1

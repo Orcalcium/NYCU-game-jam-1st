@@ -189,27 +189,12 @@ public class TimedDamageZone : MonoBehaviour
         IElementDamageable damageable = other.GetComponent<IElementDamageable>() ?? other.GetComponentInParent<IElementDamageable>();
         if (damageable == null) return;
 
-        if (!damageable.CanBeHitBy(elementType, damageOwner)) return;
+        if (!damageable.CanBeHitBy(elementType)) return;
 
         Debug.Log($"[TimedDamageZone] Hit {other.name} with {GameDefs.ElementToText(elementType)} for {damage} damage");
         damageable.TakeElementHit(elementType, damage, damageOwner);
     }
 
-    private float GetZoneRadius()
-    {
-        if (zoneCollider is CircleCollider2D circleCollider)
-        {
-            return circleCollider.radius * Mathf.Max(transform.lossyScale.x, transform.lossyScale.y);
-        }
-        else if (zoneCollider is BoxCollider2D boxCollider)
-        {
-            Vector2 size = boxCollider.size;
-            Vector2 scale = transform.lossyScale;
-            return Mathf.Max(size.x * scale.x, size.y * scale.y) * 0.5f;
-        }
-
-        return 1f; // Default radius
-    }
 
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()

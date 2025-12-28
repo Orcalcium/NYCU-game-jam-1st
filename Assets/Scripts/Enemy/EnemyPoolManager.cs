@@ -2,6 +2,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Pool;
 using GameJam.Common;
 
 public class EnemyPoolManager : MonoBehaviour
@@ -9,8 +10,15 @@ public class EnemyPoolManager : MonoBehaviour
     public static EnemyPoolManager Instance { get; private set; }
 
     [Header("Pool")]
-    public EnemyShooter2D enemyPrefab;
-    public int poolSize = 10;
+    [Tooltip("List of enemy prefabs to spawn. Each has equal spawn probability.")]
+    public List<EnemyShooter2D> enemyPrefabs = new List<EnemyShooter2D>();
+    
+    [Tooltip("Initial pool capacity per enemy type")]
+    public int poolCapacityPerType = 5;
+    
+    [Tooltip("Maximum pool size per enemy type")]
+    public int poolMaxSizePerType = 20;
+    
     public int maxAliveEnemies = 10;
 
     [Header("Spawn")]
@@ -36,21 +44,48 @@ public class EnemyPoolManager : MonoBehaviour
         public LayerMask collidesWith;
     }
 
-    readonly List<EnemyShooter2D> pool = new();
-    readonly Dictionary<ParticleSystem, ParticleCollisionDefault> particleCollisionDefaults = new();
-    float spawnTimer;
+    // Pool per enemy type
+    private Dictionary<EnemyShooter2D, ObjectPool<EnemyShooter2D>> enemyPools = new Dictionary<EnemyShooter2D, ObjectPool<EnemyShooter2D>>();
+    
+    // Track all active enemies across all pools
+    private List<EnemyShooter2D> allActiveEnemies = new List<EnemyShooter2D>();
+    
+    private Dictionary<ParticleSystem, ParticleCollisionDefault> particleCollisionDefaults = new Dictionary<ParticleSystem, ParticleCollisionDefault>();
+    
+    private float spawnTimer;
 
     void Awake()
     {
         Instance = this;
 
-        for (int i = 0; i < poolSize; i++)
+        // Validate enemy prefabs list
+        if (enemyPrefabs == null || enemyPrefabs.Count == 0)
         {
-            EnemyShooter2D e = Instantiate(enemyPrefab, transform);
-            e.gameObject.SetActive(false);
-            pool.Add(e);
+            Debug.LogError("[EnemyPoolManager] No enemy prefabs assigned!");
+            enabled = false;
+            return;
+        }
 
-            CacheParticleCollisionDefaults(e);
+        // Initialize a pool for each enemy type
+        foreach (var prefab in enemyPrefabs)
+        {
+            if (prefab == null)
+            {
+                Debug.LogWarning("[EnemyPoolManager] Null prefab found in enemy prefabs list, skipping.");
+                continue;
+            }
+
+            var pool = new ObjectPool<EnemyShooter2D>(
+                createFunc: () => CreateEnemy(prefab),
+                actionOnGet: OnGetEnemy,
+                actionOnRelease: OnReleaseEnemy,
+                actionOnDestroy: OnDestroyEnemy,
+                collectionCheck: true,
+                defaultCapacity: poolCapacityPerType,
+                maxSize: poolMaxSizePerType
+            );
+
+            enemyPools[prefab] = pool;
         }
     }
 
@@ -64,17 +99,55 @@ public class EnemyPoolManager : MonoBehaviour
         }
     }
 
+    private EnemyShooter2D CreateEnemy(EnemyShooter2D prefab)
+    {
+        EnemyShooter2D e = Instantiate(prefab, transform);
+        e.gameObject.SetActive(false);
+        CacheParticleCollisionDefaults(e);
+        return e;
+    }
+
+    private void OnGetEnemy(EnemyShooter2D enemy)
+    {
+        enemy.gameObject.SetActive(true);
+        if (!allActiveEnemies.Contains(enemy))
+        {
+            allActiveEnemies.Add(enemy);
+        }
+    }
+
+    private void OnReleaseEnemy(EnemyShooter2D enemy)
+    {
+        enemy.gameObject.SetActive(false);
+        allActiveEnemies.Remove(enemy);
+    }
+
+    private void OnDestroyEnemy(EnemyShooter2D enemy)
+    {
+        if (enemy != null)
+        {
+            allActiveEnemies.Remove(enemy);
+            Destroy(enemy.gameObject);
+        }
+    }
+
     void TrySpawn()
     {
         if (GetAliveCount() >= maxAliveEnemies) return;
 
-        EnemyShooter2D e = GetInactiveEnemy();
-        if (e == null) return;
+        // Pick a random enemy type with equal probability
+        if (enemyPools.Count == 0) return;
+
+        var prefabKeys = new List<EnemyShooter2D>(enemyPools.Keys);
+        EnemyShooter2D selectedPrefab = prefabKeys[Random.Range(0, prefabKeys.Count)];
+
+        if (!enemyPools.TryGetValue(selectedPrefab, out var pool)) return;
 
         if (!TryFindNonOverlappingSpawn(out Vector2 spawnPos)) return;
 
-        e.gameObject.SetActive(true);
+        EnemyShooter2D e = pool.Get();
         e.ResetFromPool(player, spawnPos, ElementType.Fire);
+        
         // Apply spawn-time speed multiplier so designers can globally slow/speed enemies
         e.moveSpeed *= spawnMoveSpeedMultiplier;
 
@@ -111,9 +184,9 @@ public class EnemyPoolManager : MonoBehaviour
 
     public void OnPlayerElementChanged(ElementType playerElement)
     {
-        for (int i = 0; i < pool.Count; i++)
+        for (int i = 0; i < allActiveEnemies.Count; i++)
         {
-            var e = pool[i];
+            var e = allActiveEnemies[i];
             if (e == null) continue;
             if (!e.gameObject.activeInHierarchy) continue;
 
@@ -215,18 +288,42 @@ public class EnemyPoolManager : MonoBehaviour
         return false;
     }
 
-    EnemyShooter2D GetInactiveEnemy()
-    {
-        for (int i = 0; i < pool.Count; i++)
-            if (!pool[i].gameObject.activeInHierarchy) return pool[i];
-        return null;
-    }
-
     int GetAliveCount()
     {
-        int c = 0;
-        for (int i = 0; i < pool.Count; i++)
-            if (pool[i].gameObject.activeInHierarchy) c++;
-        return c;
+        // Clean up null references
+        allActiveEnemies.RemoveAll(e => e == null || !e.gameObject.activeInHierarchy);
+        return allActiveEnemies.Count;
+    }
+
+    /// <summary>
+    /// Release an enemy back to its appropriate pool.
+    /// </summary>
+    public void ReleaseEnemy(EnemyShooter2D enemy)
+    {
+        if (enemy == null) return;
+
+        // Find which pool this enemy belongs to by checking prefab reference
+        foreach (var kvp in enemyPools)
+        {
+            // Compare by prefab name since instance won't match prefab directly
+            if (enemy.name.StartsWith(kvp.Key.name))
+            {
+                kvp.Value.Release(enemy);
+                return;
+            }
+        }
+
+        Debug.LogWarning($"[EnemyPoolManager] Could not find pool for enemy {enemy.name}");
+    }
+
+    void OnDestroy()
+    {
+        // Clear all pools
+        foreach (var pool in enemyPools.Values)
+        {
+            pool.Clear();
+        }
+        enemyPools.Clear();
+        allActiveEnemies.Clear();
     }
 }
