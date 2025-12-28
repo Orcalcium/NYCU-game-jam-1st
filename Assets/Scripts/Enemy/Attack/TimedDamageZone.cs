@@ -189,7 +189,7 @@ public class TimedDamageZone : MonoBehaviour
         IElementDamageable damageable = other.GetComponent<IElementDamageable>() ?? other.GetComponentInParent<IElementDamageable>();
         if (damageable == null) return;
 
-        if (!damageable.CanBeHitBy(elementType, damageOwner)) return;
+        if (!damageable.CanBeHitBy(elementType)) return;
 
         Debug.Log($"[TimedDamageZone] Hit {other.name} with {GameDefs.ElementToText(elementType)} for {damage} damage");
         damageable.TakeElementHit(elementType, damage, damageOwner);

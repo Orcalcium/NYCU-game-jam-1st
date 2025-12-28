@@ -1,5 +1,4 @@
 ﻿// File: Player/PlayerSkillCaster2D.cs
-
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -55,6 +54,24 @@ public class PlayerSkillCaster2D : MonoBehaviour
     float nextBlinkTime;
     float nextAoeTime;
 
+    // ===== Added: cached cooldown ratios (updated in Update, read by UI/other scripts) =====
+    [Header("Runtime Cooldown (0~1, remaining/cooldown)")]
+    [SerializeField] private float pierceRemaining01;
+    [SerializeField] private float blinkRemaining01;
+    [SerializeField] private float aoeRemaining01;
+
+    public float PierceRemaining01 => pierceRemaining01;
+    public float BlinkRemaining01 => blinkRemaining01;
+    public float AoERemaining01 => aoeRemaining01;
+
+    public float PierceCooldown => pierceCooldown;
+    public float BlinkCooldown => blinkCooldown;
+    public float AoECooldown => aoeCooldown;
+
+    public float NextPierceTime => nextPierceTime;
+    public float NextBlinkTime => nextBlinkTime;
+    public float NextAoeTime => nextAoeTime;
+
     readonly HashSet<int> _hitIds = new HashSet<int>();
 
     const string LOG_PREFIX = "[PlayerSkillCaster2D]";
@@ -73,7 +90,6 @@ public class PlayerSkillCaster2D : MonoBehaviour
         if (!player) player = GetComponent<PlayerController2D>();
         if (!targetCamera) targetCamera = Camera.main;
 
-        // Ensure we have a valid fire point: prefer a child named FirePoint, then player's firePoint, else default to this transform
         if (firePoint == null)
         {
             var child = transform.Find("FirePoint");
@@ -84,6 +100,22 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
         LogLayerConfigOnce("Awake");
         LogRefs("Awake");
+    }
+
+    void Update()
+    {
+        float now = Time.time;
+
+        pierceRemaining01 = GetRemaining01(now, nextPierceTime, pierceCooldown);
+        blinkRemaining01 = GetRemaining01(now, nextBlinkTime, blinkCooldown);
+        aoeRemaining01 = GetRemaining01(now, nextAoeTime, aoeCooldown);
+    }
+
+    static float GetRemaining01(float now, float nextTime, float cd)
+    {
+        if (cd <= 0f) return 0f;
+        float rem = Mathf.Max(0f, nextTime - now);
+        return Mathf.Clamp01(rem / cd);
     }
 
     void OnValidate()
@@ -225,8 +257,6 @@ public class PlayerSkillCaster2D : MonoBehaviour
         return true;
     }
 
-    // Spawn a pierce bullet immediately without checking or setting the pierce skill cooldown.
-    // This is intended for burst fire where the outer controller handles cooldown and element cycling.
     public bool SpawnPierceImmediate(Vector2 origin, Vector2 dir, ElementType elem)
     {
         if (bulletPool == null || firePoint == null)
@@ -543,22 +573,9 @@ public class PlayerSkillCaster2D : MonoBehaviour
         }
     }
 
-    // Public wrappers so external input handlers can invoke specific skills directly
-    public bool CastPierce(Vector2 origin, Vector2 dir)
-    {
-        return TryCastPierce(origin, dir, GetPlayerElement());
-    }
-
-    public bool CastBlink(Vector2 origin, Vector2 dir)
-    {
-        return TryCastBlink(origin, dir, GetPlayerElement());
-    }
-
-    public bool CastAoe(Vector2 origin)
-    {
-        // TryCastAoe ignores dir and uses mouse; pass Vector2.zero for dir
-        return TryCastAoe(origin, Vector2.zero, GetPlayerElement());
-    }
+    public bool CastPierce(Vector2 origin, Vector2 dir) => TryCastPierce(origin, dir, GetPlayerElement());
+    public bool CastBlink(Vector2 origin, Vector2 dir) => TryCastBlink(origin, dir, GetPlayerElement());
+    public bool CastAoe(Vector2 origin) => TryCastAoe(origin, Vector2.zero, GetPlayerElement());
 
     void LogLayerConfigOnce(string from)
     {
