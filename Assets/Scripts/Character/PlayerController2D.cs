@@ -9,6 +9,12 @@ using GameJam.Common;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController2D : MonoBehaviour, IElementDamageable
 {
+    public enum ElementCycleMode
+    {
+        Bag3,          // 3-bag like Tetris: each bag contains all 3 elements exactly once, shuffled
+        RandomDifferent // random pick different from current
+    }
+
     [Header("Move (WASD)")]
     public float moveSpeed = 5.5f;
 
@@ -35,7 +41,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     [Header("State")]
     public ElementType currentElement = ElementType.Fire;
-    public int hp = 5;
+    public int hp = 3;
+    private int maxHp = 3;
 
     [Header("Visual")]
     public SpriteRenderer bodyRenderer;
@@ -56,6 +63,9 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     public int indicatorCircleSegments = 48;
 
     [Header("Element Cycle (3-Bag + UI)")]
+    [Tooltip("Which element cycling behavior to use after a skill / burst.")]
+    public ElementCycleMode elementCycleMode = ElementCycleMode.Bag3;
+
     [Tooltip("UI icon for current element")]
     public Image elementNowUI;
     [Tooltip("UI icon for next element")]
@@ -87,6 +97,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
 
+    // Kept for compatibility with the other branch¡¦s logic (index-tracking),
+    // even though the bag mode is the default cycle behavior.
+    int cycleIndex;
+
     // 3-bag like Tetris: each bag contains all 3 elements exactly once, shuffled.
     readonly List<ElementType> bag = new List<ElementType>(3);
     int bagPos;
@@ -112,10 +126,23 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         if (PlayerSkillCaster2D == null) PlayerSkillCaster2D = GetComponent<PlayerSkillCaster2D>();
 
+        // Merge resolution:
+        // - Keep 3-bag initialization (HEAD behavior)
+        // - Also keep cycleIndex tracking (other branch behavior)
         InitElementBagWithCurrentAsFirst();
         currentElement = bag[bagPos];
+        cycleIndex = GetCycleIndex(currentElement);
+
         ApplyElementVisual();
         UpdateElementQueueUI();
+
+        maxHp = hp;
+        if (GameJam.UI.GameUIManager.Instance != null)
+        {
+            GameJam.UI.GameUIManager.Instance.maxHp = maxHp;
+            GameJam.UI.GameUIManager.Instance.UpdateHp(hp);
+            GameJam.UI.GameUIManager.Instance.ResetHpColors();
+        }
 
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
 
@@ -190,7 +217,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         Vector2 dir = aimWorld - origin;
         if (dir.sqrMagnitude > 1e-6f) dir.Normalize();
 
-        // Left click -> shoot bullet (Pierce Shot) - automatic while held, respects fireCooldown
         if (Mouse.current.leftButton.isPressed && fireCd <= 0f && !isBursting)
         {
             Vector2 burstDir = dir.sqrMagnitude > 0.0001f ? dir : Vector2.right;
@@ -200,7 +226,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             StartCoroutine(BurstFire(origin, burstDir, burstElem));
         }
 
-        // Right click -> AoE Blast (press to aim, release to cast)
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
             isAimingSkill = true;
@@ -222,7 +247,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             }
         }
 
-        // Space -> Blink Slash (dash attack)
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             bool used = false;
@@ -231,7 +255,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             else
                 used = PlayerSkillCaster2D.CastBlink(origin, Vector2.right);
 
-            if (used) CycleElementAfterSkill();
+            if (used)
+            {
+                CycleElementAfterSkill();
+            }
         }
     }
 
@@ -421,20 +448,46 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         bodyRenderer.color = GameDefs.ElementToColor(currentElement);
     }
 
+    int GetCycleIndex(ElementType e)
+    {
+        for (int i = 0; i < Cycle.Length; i++)
+            if (Cycle[i] == e) return i;
+        return 0;
+    }
+
+    void SetElement(ElementType e)
+    {
+        currentElement = e;
+        cycleIndex = GetCycleIndex(currentElement);
+        ApplyElementVisual();
+        UpdateElementQueueUI();
+        EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
+    }
+
     public void CycleElementAfterSkill()
     {
-        bagPos++;
+        if (elementCycleMode == ElementCycleMode.RandomDifferent)
+        {
+            List<ElementType> options = new List<ElementType>(Cycle);
+            options.Remove(currentElement);
+            int randIdx = Random.Range(0, options.Count);
+            SetElement(options[randIdx]);
 
+            // Keep bag aligned so UI queue remains meaningful after random cycle:
+            // Rebuild a new bag with current element as first (others shuffled).
+            InitElementBagWithCurrentAsFirst();
+            return;
+        }
+
+        // Bag3 mode (HEAD behavior)
+        bagPos++;
         if (bagPos >= bag.Count)
         {
             RefillBagShuffled();
             bagPos = 0;
         }
 
-        currentElement = bag[bagPos];
-        ApplyElementVisual();
-        UpdateElementQueueUI();
-        EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
+        SetElement(bag[bagPos]);
     }
 
     void InitElementBagWithCurrentAsFirst()
@@ -446,7 +499,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         if (idx != 0)
         {
-            // rotate so currentElement is first, keeping the other two in their shuffled order
             ElementType a = bag[0];
             ElementType b = bag[1];
             ElementType c = bag[2];
@@ -469,7 +521,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         bag.Clear();
         bag.AddRange(Cycle);
 
-        // Fisher-Yates shuffle
         for (int i = bag.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
@@ -524,7 +575,21 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     {
         if (!CanBeHitBy(element)) return;
 
+        int prevHp = hp;
         hp -= damage;
+        if (hp > maxHp || hp < 0)
+        {
+            Debug.LogWarning($"[Player] hp out of range after damage: prevHp={prevHp} damage={damage} rawHp={hp} clamping to 0..{maxHp}");
+            hp = Mathf.Clamp(hp, 0, maxHp);
+        }
+        else
+        {
+            Debug.Log($"[Player] TakeElementHit: element={element} damage={damage} prevHp={prevHp} newHp={hp}");
+        }
+        if (GameJam.UI.GameUIManager.Instance != null)
+        {
+            GameJam.UI.GameUIManager.Instance.UpdateHp(hp, element);
+        }
 
         if (hp <= 0)
         {
