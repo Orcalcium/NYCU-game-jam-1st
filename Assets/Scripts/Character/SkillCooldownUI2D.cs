@@ -8,7 +8,6 @@ public class SkillCooldownUI2D : MonoBehaviour
     [SerializeField] private PlayerSkillCaster2D caster;
 
     [Header("Sliders (value = remaining %)")]
-    [SerializeField] private Slider pierceSlider;
     [SerializeField] private Slider blinkSlider;
     [SerializeField] private Slider aoeSlider;
 
@@ -18,7 +17,6 @@ public class SkillCooldownUI2D : MonoBehaviour
     void Awake()
     {
         if (!caster) caster = FindFirstObjectByType<PlayerSkillCaster2D>();
-        InitSlider(pierceSlider);
         InitSlider(blinkSlider);
         InitSlider(aoeSlider);
     }
@@ -34,14 +32,6 @@ public class SkillCooldownUI2D : MonoBehaviour
     void Update()
     {
         if (!caster) return;
-
-        if (pierceSlider)
-        {
-            float v = caster.PierceRemaining01;
-            pierceSlider.value = v;
-            if (hideWhenReady) pierceSlider.gameObject.SetActive(v > 0f);
-        }
-
         if (blinkSlider)
         {
             float v = caster.BlinkRemaining01;
