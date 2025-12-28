@@ -39,7 +39,7 @@ namespace GameJam.Common
 
     public interface IElementDamageable
     {
-        bool CanBeHitBy(ElementType element, Object source);
+        bool CanBeHitBy(ElementType element);
         void TakeElementHit(ElementType element, int damage, Object source);
     }
 }

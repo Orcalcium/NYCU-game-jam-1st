@@ -176,7 +176,7 @@ public class ParticleShooter : MonoBehaviour
         IElementDamageable damageable = other.GetComponent<IElementDamageable>();
         if (damageable != null)
         {
-            if (damageable.CanBeHitBy(elementType, ownerSource))
+            if (damageable.CanBeHitBy(elementType))
             {
                 damageable.TakeElementHit(elementType, particleDamage, ownerSource);
                 Debug.Log($"[ParticleShooter] Particle hit {other.name} with {GameDefs.ElementToText(elementType)} for {particleDamage} damage");
