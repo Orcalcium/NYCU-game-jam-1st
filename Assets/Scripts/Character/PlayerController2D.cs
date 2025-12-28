@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using GameJam.Common;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController2D : MonoBehaviour, IElementDamageable
@@ -577,15 +578,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         int prevHp = hp;
         hp -= damage;
+
         if (hp > maxHp || hp < 0)
         {
-            Debug.LogWarning($"[Player] hp out of range after damage: prevHp={prevHp} damage={damage} rawHp={hp} clamping to 0..{maxHp}");
             hp = Mathf.Clamp(hp, 0, maxHp);
         }
-        else
-        {
-            Debug.Log($"[Player] TakeElementHit: element={element} damage={damage} prevHp={prevHp} newHp={hp}");
-        }
+
         if (GameJam.UI.GameUIManager.Instance != null)
         {
             GameJam.UI.GameUIManager.Instance.UpdateHp(hp, element);
@@ -593,10 +591,9 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         if (hp <= 0)
         {
-            Debug.Log("[Player] Dead");
+            SceneManager.LoadScene("DeadMenu");
         }
     }
-
     void ApplyAimSlowTime(bool enabled)
     {
         if (enabled)

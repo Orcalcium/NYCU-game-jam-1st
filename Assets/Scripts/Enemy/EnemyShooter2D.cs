@@ -23,7 +23,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public enum MoveTriggerMode { Always, MoveWhenCloserThan, MoveWhenFartherThan, MoveWhenBetween }
 
     [Header("Behavior")]
-    [Tooltip("Controls when the enemy will actively move relative to the target")] 
+    [Tooltip("Controls when the enemy will actively move relative to the target")]
     public MoveTriggerMode moveTrigger = MoveTriggerMode.Always;
     [Tooltip("Distance threshold for the MoveWhenCloserThan/MoveWhenFartherThan modes")]
     public float activationDistance = 6.0f;
@@ -68,7 +68,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     {
         if (requestedCharging) return true;
 
-        // If any ZoneAttacker is currently attacking, treat that as charging
         var zoneAttackers = GetComponents<ZoneAttacker>();
         for (int i = 0; i < zoneAttackers.Length; i++)
         {
@@ -107,13 +106,9 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     [Tooltip("Optional maximum speed to use while separating (0 = use pushMaxSpeed)")]
     public float separationMaxSpeed = 0f; // 0 means use pushMaxSpeed
 
-    [Header("Bounds")]
-    [Tooltip("Clamp enemy movement to this X range (world units)")]
-    public float boundsMinX = -114.2f;
-    public float boundsMaxX = 114.2f;
-    [Tooltip("Clamp enemy movement to this Y range (world units)")]
-    public float boundsMinY = -8f;
-    public float boundsMaxY = 8f;
+    [Header("Clamp (World Bounds)")]
+    public float clampX = 13.5f;
+    public float clampY = 7.5f;
 
     Rigidbody2D rb;
     Collider2D col;
@@ -158,7 +153,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         ApplyElementVisual();
 
-        // Initialize random movement state
         rampageDir = Random.insideUnitCircle.normalized;
         rampageDirTimer = Random.Range(rampageChangeIntervalMin, rampageChangeIntervalMax);
     }
@@ -188,18 +182,18 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         Vector2 to = tpos - pos;
         float dist = to.magnitude;
 
-        // Compute separation push (based on other nearby enemies)
         Vector2 separationPush = ComputePositionPush(pos);
         if (separationPriority && separationPush.sqrMagnitude > (separationPriorityThreshold * separationPriorityThreshold))
         {
             Vector2 sepVel = separationPush;
             float sepMaxSpd = (separationMaxSpeed > 0f) ? separationMaxSpeed : pushMaxSpeed;
             if (sepVel.sqrMagnitude > sepMaxSpd * sepMaxSpd) sepVel = sepVel.normalized * sepMaxSpd;
+
+            sepVel = ClampVelocityToClampBounds(pos, sepVel);
             rb.linearVelocity = sepVel;
             return;
         }
 
-        // Movement activation check based on configured mode
         bool shouldMove = true;
         if (moveTrigger == MoveTriggerMode.MoveWhenCloserThan) shouldMove = dist < activationDistance;
         else if (moveTrigger == MoveTriggerMode.MoveWhenFartherThan) shouldMove = dist > activationDistance;
@@ -211,16 +205,13 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
             return;
         }
 
-        // Compute desired velocity depending on movement mode
         Vector2 v = ComputeDesiredVelocity(pos, to, dist);
 
-        // Add small push to avoid overlaps while moving (non-priority)
         v += separationPush;
 
         float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
         if (v.sqrMagnitude > maxSpd * maxSpd) v = v.normalized * maxSpd;
 
-        // Wall avoidance: if about to hit wall, choose another direction that increases distance from player
         if (v.sqrMagnitude > 1e-8f && wallLayers.value != 0)
         {
             Vector2 velDir = v.normalized;
@@ -238,40 +229,43 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
             }
         }
 
-        // Clamp velocity such that the next position will remain inside bounds
-        v = ClampVelocityToBounds(pos, v);
+        v = ClampVelocityToClampBounds(pos, v);
 
         rb.linearVelocity = v;
     }
 
-    Vector2 ClampVelocityToBounds(Vector2 pos, Vector2 vel)
+    Vector2 ClampVelocityToClampBounds(Vector2 pos, Vector2 vel)
     {
         if (Mathf.Approximately(Time.fixedDeltaTime, 0f)) return vel;
+
         Vector2 next = pos + vel * Time.fixedDeltaTime;
-        float clampedX = Mathf.Clamp(next.x, boundsMinX, boundsMaxX);
-        float clampedY = Mathf.Clamp(next.y, boundsMinY, boundsMaxY);
+
+        float minX = -Mathf.Abs(clampX);
+        float maxX = Mathf.Abs(clampX);
+        float minY = -Mathf.Abs(clampY);
+        float maxY = Mathf.Abs(clampY);
+
+        float clampedX = Mathf.Clamp(next.x, minX, maxX);
+        float clampedY = Mathf.Clamp(next.y, minY, maxY);
 
         if (Mathf.Approximately(next.x, clampedX) && Mathf.Approximately(next.y, clampedY)) return vel;
 
-        // Convert clamped next position back into a velocity
         return new Vector2((clampedX - pos.x) / Time.fixedDeltaTime, (clampedY - pos.y) / Time.fixedDeltaTime);
     }
 
     Vector2 ComputeDesiredVelocity(Vector2 pos, Vector2 to, float dist)
     {
-        // Rampage movement mode: random wandering when not charging, one-axis chase when charging
         if (movementMode == MovementMode.Rampage)
         {
             bool charging = IsCurrentlyCharging();
             if (charging && target != null)
             {
-                // Chase player along a single axis
                 Vector2 delta = ((Vector2)target.position) - pos;
 
                 bool chaseHorizontal = false;
                 if (rampageAxisMode == RampageAxisMode.Horizontal) chaseHorizontal = true;
                 else if (rampageAxisMode == RampageAxisMode.Vertical) chaseHorizontal = false;
-                else // Dominant
+                else
                     chaseHorizontal = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y);
 
                 Vector2 chase = Vector2.zero;
@@ -289,18 +283,16 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
                 return chase;
             }
 
-            // Random wandering
             rampageDirTimer -= Time.fixedDeltaTime;
             if (rampageDirTimer <= 0f || rampageDir == Vector2.zero)
             {
                 rampageDir = Random.insideUnitCircle.normalized;
                 rampageDirTimer = Random.Range(rampageChangeIntervalMin, rampageChangeIntervalMax);
             }
- 
+
             return rampageDir * rampageMoveSpeed;
         }
 
-        // Default movement: follow/avoid target to maintain stopDistance/keepDistance
         float minStop = Mathf.Max(0.01f, stopDistance - keepDistance);
         float maxStop = stopDistance + keepDistance;
 
@@ -362,7 +354,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
     Vector2 PickBestUnblockedDir(Vector2 pos, Vector2 currentDir, Vector2 awayDir, float probeDist)
     {
-        // Try directions biased to "away from player" first, then slide options around currentDir.
         Vector2 best = Vector2.zero;
         float bestScore = float.NegativeInfinity;
 
@@ -386,7 +377,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
             if (d.sqrMagnitude < 1e-8f) continue;
             if (WouldHitWall(pos, d, probeDist)) continue;
 
-            // Score: prioritize moving away from player, lightly keep continuity with current direction.
             float score = Vector2.Dot(d, awayDir) * 2.0f + Vector2.Dot(d, currentDir) * 0.35f;
 
             if (score > bestScore)
@@ -489,11 +479,15 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
         BuildWeakpoints();
 
-        // Reset random movement state when reusing from pool
         rampageDir = Random.insideUnitCircle.normalized;
         rampageDirTimer = Random.Range(rampageChangeIntervalMin, rampageChangeIntervalMax);
 
         rb.position += ComputePositionPush(rb.position) * Time.fixedDeltaTime;
+
+        rb.position = new Vector2(
+            Mathf.Clamp(rb.position.x, -Mathf.Abs(clampX), Mathf.Abs(clampX)),
+            Mathf.Clamp(rb.position.y, -Mathf.Abs(clampY), Mathf.Abs(clampY))
+        );
     }
 
     void BuildWeakpoints()
@@ -544,10 +538,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         if (bodyRenderer != null) bodyRenderer.enabled = true;
     }
 
-    /// <summary>
-    /// Called by attacker components to indicate this enemy is charging an attack.
-    /// When charging and in Rampage mode, the enemy will chase the player along one axis.
-    /// </summary>
     public void SetCharging(bool charging)
     {
         requestedCharging = charging;
@@ -592,9 +582,11 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         if (wallProbeMultiplier < 0.1f) wallProbeMultiplier = 0.1f;
         if (wallCastPadding < 0f) wallCastPadding = 0f;
 
-
         if (rampageChangeIntervalMin < 0f) rampageChangeIntervalMin = 0f;
         if (rampageChangeIntervalMax < 0f) rampageChangeIntervalMax = 0f;
         if (rampageChangeIntervalMax < rampageChangeIntervalMin) rampageChangeIntervalMax = rampageChangeIntervalMin;
+
+        if (clampX < 0f) clampX = 0f;
+        if (clampY < 0f) clampY = 0f;
     }
 }
