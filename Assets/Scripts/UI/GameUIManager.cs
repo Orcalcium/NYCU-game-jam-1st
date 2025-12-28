@@ -96,8 +96,15 @@ namespace GameJam.UI
             foreach (var obj in hpPoints)
             {
                 if (obj == null) continue;
-                var img = obj.GetComponent<UnityEngine.UI.Image>();
-                if (img != null) img.color = Color.white;
+                // Reset any Graphic components on the object or its children (covers Image, RawImage, Text, etc.)
+                var graphics = obj.GetComponentsInChildren<UnityEngine.UI.Graphic>(true);
+                foreach (var g in graphics)
+                {
+                    if (g != null) g.color = Color.white;
+                }
+                // Ensure Button.image (if present) is also reset (covers cases where the Image is assigned on the Button component)
+                var btn = obj.GetComponent<UnityEngine.UI.Button>();
+                if (btn != null && btn.image != null) btn.image.color = Color.white;
             }
         }
     }

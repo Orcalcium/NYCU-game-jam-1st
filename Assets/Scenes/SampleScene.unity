@@ -608,6 +608,62 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 427090109}
   m_CullTransparentMesh: 1
+--- !u!1 &534391833
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 534391835}
+  - component: {fileID: 534391834}
+  m_Layer: 0
+  m_Name: HealthPackSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &534391834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 534391833}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a99bab6b0067238958d6d3c33243d2fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealpackSpawner
+  healpackPrefab: {fileID: 5179778418259643353, guid: 413101786b310d27f8bacb04d48150e0, type: 3}
+  spawnInterval: 12
+  maxActiveHealpacks: 3
+  boundsMinX: -12
+  boundsMaxX: 12
+  boundsMinY: -6
+  boundsMaxY: 6
+  spawnClearRadius: 0.6
+  spawnTryCount: 20
+  overlapMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!4 &534391835
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 534391833}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &556756408
 GameObject:
   m_ObjectHideFlags: 0
@@ -739,30 +795,21 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0.3
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.33333334
+      outWeight: 0
     - serializedVersion: 3
-      time: 0.3
-      value: 0.7
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 0.6
-      value: 0.3
+      time: 1
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0.33333334
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -885,6 +932,10 @@ MonoBehaviour:
   aoeRadius: 2.2
   aoeDamage: 2
   aoeCooldown: 0.9
+  aoeCastDelay: 1
+  aoeIndicatorLineWidth: 0.06
+  aoeIndicatorSegments: 48
+  aoeIndicatorSortingOrder: 210
   pierceRemaining01: 0
   blinkRemaining01: 0
   aoeRemaining01: 0
@@ -3941,3 +3992,4 @@ SceneRoots:
   - {fileID: 1206017437}
   - {fileID: 1177521448}
   - {fileID: 1166129756}
+  - {fileID: 534391835}
