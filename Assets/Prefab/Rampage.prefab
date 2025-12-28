@@ -139,7 +139,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyShooter2D
   difficulty: 7
-  startThreshold: 20
+  startThreshold: 30
   target: {fileID: 0}
   stopDistance: 6.5
   keepDistance: 0.25

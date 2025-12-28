@@ -137,8 +137,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ca1671df6a829840a327ce29b2f288a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyShooter2D
-  difficulty: 2
-  startThreshold: 0
+  difficulty: 4
+  startThreshold: 10
   target: {fileID: 0}
   stopDistance: 6.5
   keepDistance: 0.25

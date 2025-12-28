@@ -689,7 +689,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             
             // Normalize time to 0-1 range based on total invincible period
             float t = elapsed / invinciblePeriod;
-            
+            t = t%blinkCurve.keys[blinkCurve.length - 1].time; // Loop over curve duration
+
             // Evaluate curve to get alpha value
             float alpha = blinkCurve.Evaluate(t);
             
