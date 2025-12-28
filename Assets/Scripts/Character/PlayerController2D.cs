@@ -166,8 +166,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         Vector2 dir = aimWorld - origin;
         if (dir.sqrMagnitude > 1e-6f) dir.Normalize();
 
-        // Left click -> shoot bullet (Pierce Shot)
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        // Left click -> shoot bullet (Pierce Shot) - automatic while held, respects fireCooldown
+        if (Mouse.current.leftButton.isPressed && fireCd <= 0f)
         {
             bool fired = false;
             if (dir.sqrMagnitude > 0.0001f)
@@ -179,7 +179,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                 fired = PlayerSkillCaster2D.CastPierce(origin, Vector2.right);
             }
 
-            if (fired) CycleElementAfterSkill();
+            if (fired)
+            {
+                CycleElementAfterSkill();
+                fireCd = fireCooldown;
+            }
         }
 
         // Right click -> AoE Blast (press to aim, release to cast)
