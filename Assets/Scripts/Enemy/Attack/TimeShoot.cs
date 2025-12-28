@@ -15,7 +15,9 @@ public class TimeShoot : MonoBehaviour
     public bool autoStart = true;
 
     private ParticleShooter shooter;
+    [SerializeField]
     private float shootTimer;
+    [SerializeField]
     private bool isShooting;
 
     void Awake()

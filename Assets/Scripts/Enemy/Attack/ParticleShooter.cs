@@ -16,10 +16,7 @@ public class ParticleShooter : MonoBehaviour
     [Header("Shooting")]
     [Tooltip("Fire point where particles spawn from")]
     public Transform firePoint;
-    
-    [Tooltip("Speed of the particles")]
-    public float particleSpeed = 10f;
-    
+        
     [Tooltip("Damage dealt by each particle")]
     public int particleDamage = 1;
 
@@ -75,9 +72,6 @@ public class ParticleShooter : MonoBehaviour
 
         // Configure particle system for manual shooting
         var main = particleSystem.main;
-        main.loop = false;
-        main.playOnAwake = false;
-        main.startSpeed = particleSpeed;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
 
         // Ensure collision is enabled
@@ -135,11 +129,8 @@ public class ParticleShooter : MonoBehaviour
             particleSystem.transform.rotation = Quaternion.Euler(0, 0, angle);
         }
 
-        // Update particle speed
-        var main = particleSystem.main;
-        main.startSpeed = particleSpeed;
-
         // Play the particle system
+        Debug.Log($"[ParticleShooter] Shooting particles from {startPos} towards direction {direction}");
         particleSystem.Play();
     }
 
@@ -187,12 +178,6 @@ public class ParticleShooter : MonoBehaviour
 #if UNITY_EDITOR
     void OnValidate()
     {
-        // Update particle system when values change in the inspector
-        if (particleSystem != null && Application.isPlaying)
-        {
-            var main = particleSystem.main;
-            main.startSpeed = particleSpeed;
-        }
     }
 #endif
 }

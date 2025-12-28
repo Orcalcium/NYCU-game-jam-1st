@@ -237,7 +237,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ParticleShooter
   particleSystem: {fileID: 3912385704381608365}
   firePoint: {fileID: 0}
-  particleSpeed: 10
   particleDamage: 1
   elementType: 0
   autoAim: 1
@@ -255,6 +254,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TimedParticleShooter
   shootInterval: 1
   autoStart: 1
+  shootTimer: 0
+  isShooting: 0
 --- !u!1001 &6671141904018128561
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -306,6 +307,18 @@ PrefabInstance:
     - target: {fileID: 4615810797465458123, guid: ed5178cf8275d6f47bf14d749aec0345, type: 3}
       propertyPath: m_Name
       value: Single
+      objectReference: {fileID: 0}
+    - target: {fileID: 7700942223688486684, guid: ed5178cf8275d6f47bf14d749aec0345, type: 3}
+      propertyPath: looping
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7700942223688486684, guid: ed5178cf8275d6f47bf14d749aec0345, type: 3}
+      propertyPath: lengthInSec
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7700942223688486684, guid: ed5178cf8275d6f47bf14d749aec0345, type: 3}
+      propertyPath: InitialModule.startSpeed.scalar
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
