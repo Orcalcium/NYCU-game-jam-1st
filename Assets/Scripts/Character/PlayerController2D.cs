@@ -787,7 +787,17 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         if (skill == PlayerSkillCaster2D.SkillType.AoEBlast)
         {
             float radius = PlayerSkillCaster2D.GetAoeRadius();
-            DrawCircle(aimWorld, radius);
+            // Use raw mouse world (not clamped by maxAimRange) and clamp the center to actual AoE cast range
+            Vector2 rawAim = PlayerSkillCaster2D.GetMouseWorld(origin);
+            Vector2 delta = rawAim - origin;
+            float dist = delta.magnitude;
+            float aoeMax = PlayerSkillCaster2D.GetAoeMaxCastRange();
+            Vector2 center = rawAim;
+            if (dist > aoeMax && dist > 1e-6f)
+            {
+                center = origin + (delta / dist) * aoeMax;
+            }
+            DrawCircle(center, radius);
         }
         else
         {

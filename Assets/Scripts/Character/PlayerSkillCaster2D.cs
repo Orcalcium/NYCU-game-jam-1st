@@ -163,6 +163,9 @@ public class PlayerSkillCaster2D : MonoBehaviour
     public SkillType GetCurrentSkill() => currentSkill;
     public float GetAoeRadius() => aoeRadius;
 
+    // Public accessor for AoE max cast range (used by indicators)
+    public float GetAoeMaxCastRange() => aoeMaxCastRange;
+
     public float GetIndicatorLineLength()
     {
         return currentSkill switch
@@ -197,6 +200,17 @@ public class PlayerSkillCaster2D : MonoBehaviour
         if (dist > maxAimRange) aim = origin + delta / dist * maxAimRange;
 
         return aim;
+    }
+
+    // Returns the world position under the mouse without applying any range clamping.
+    public Vector2 GetMouseWorld(Vector2 origin)
+    {
+        if (!targetCamera) targetCamera = Camera.main;
+        if (Mouse.current == null || targetCamera == null) return origin + Vector2.right;
+
+        Vector2 mousePos = Mouse.current.position.ReadValue();
+        Vector3 w = targetCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, 0f));
+        return new Vector2(w.x, w.y);
     }
 
     ElementType GetPlayerElement()
