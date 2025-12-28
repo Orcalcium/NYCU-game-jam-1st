@@ -20,6 +20,7 @@ public class LoadSampleSceneButton : MonoBehaviour
 
     private void LoadScene()
     {
+        Time.timeScale = 1;
         SceneManager.LoadScene(sceneName);
     }
 }
