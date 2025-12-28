@@ -1423,7 +1423,7 @@ RectTransform:
   m_GameObject: {fileID: 1004274907}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.7, y: 0.7, z: 1}
+  m_LocalScale: {x: 0.3, y: 0.3, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1170198983}
@@ -1433,7 +1433,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -284, y: 181}
+  m_AnchoredPosition: {x: -215, y: 20}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1041150468
@@ -1652,9 +1652,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameJam.UI.GameUIManager
   hpPoints:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 1511135339}
+  - {fileID: 2014560421}
+  - {fileID: 1722640753}
   maxHp: 3
 --- !u!4 &1166129756
 Transform:
@@ -1965,7 +1965,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.8, y: 0.8}
   m_AnchorMax: {x: 0.95, y: 0.95}
-  m_AnchoredPosition: {x: 96, y: 54}
+  m_AnchoredPosition: {x: -52, y: 7}
   m_SizeDelta: {x: 96, y: 54}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &1234769840
@@ -2031,8 +2031,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 72
-  m_fontSizeBase: 72
+  m_fontSize: 24
+  m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2126,15 +2126,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_LocalScale.x
-      value: 4
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_LocalScale.y
-      value: 4
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_LocalScale.z
-      value: 4
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_LocalPosition.x
@@ -2166,11 +2166,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -819
+      value: -285
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 482
+      value: 167
       objectReference: {fileID: 0}
     - target: {fileID: 6137762569724733947, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2350,6 +2350,11 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &1511135339 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1408708650312328092, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
+  m_PrefabInstance: {fileID: 1255282627}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1559172560
 GameObject:
   m_ObjectHideFlags: 0
@@ -2621,7 +2626,7 @@ RectTransform:
   m_GameObject: {fileID: 1666900948}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1445714143}
@@ -2630,7 +2635,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -76.36, y: -291.93}
+  m_AnchoredPosition: {x: -76.36, y: -97}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1666900950
@@ -2724,6 +2729,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1667703189}
   m_CullTransparentMesh: 1
+--- !u!1 &1722640753 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2691080902881335154, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
+  m_PrefabInstance: {fileID: 1255282627}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1798530370
 GameObject:
   m_ObjectHideFlags: 0
@@ -3010,6 +3020,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SurvivalTimeUpdater
   startOnAwake: 1
   resetOnStart: 1
+--- !u!1 &2014560421 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6486181695947359494, guid: 96127bb04f3df05fa9cccdd242f2fd24, type: 3}
+  m_PrefabInstance: {fileID: 1255282627}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2066085053
 GameObject:
   m_ObjectHideFlags: 0
