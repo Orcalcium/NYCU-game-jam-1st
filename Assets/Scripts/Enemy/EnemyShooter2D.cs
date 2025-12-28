@@ -107,6 +107,14 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     [Tooltip("Optional maximum speed to use while separating (0 = use pushMaxSpeed)")]
     public float separationMaxSpeed = 0f; // 0 means use pushMaxSpeed
 
+    [Header("Bounds")]
+    [Tooltip("Clamp enemy movement to this X range (world units)")]
+    public float boundsMinX = -114.2f;
+    public float boundsMaxX = 114.2f;
+    [Tooltip("Clamp enemy movement to this Y range (world units)")]
+    public float boundsMinY = -8f;
+    public float boundsMaxY = 8f;
+
     Rigidbody2D rb;
     Collider2D col;
 
@@ -230,7 +238,23 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
             }
         }
 
+        // Clamp velocity such that the next position will remain inside bounds
+        v = ClampVelocityToBounds(pos, v);
+
         rb.linearVelocity = v;
+    }
+
+    Vector2 ClampVelocityToBounds(Vector2 pos, Vector2 vel)
+    {
+        if (Mathf.Approximately(Time.fixedDeltaTime, 0f)) return vel;
+        Vector2 next = pos + vel * Time.fixedDeltaTime;
+        float clampedX = Mathf.Clamp(next.x, boundsMinX, boundsMaxX);
+        float clampedY = Mathf.Clamp(next.y, boundsMinY, boundsMaxY);
+
+        if (Mathf.Approximately(next.x, clampedX) && Mathf.Approximately(next.y, clampedY)) return vel;
+
+        // Convert clamped next position back into a velocity
+        return new Vector2((clampedX - pos.x) / Time.fixedDeltaTime, (clampedY - pos.y) / Time.fixedDeltaTime);
     }
 
     Vector2 ComputeDesiredVelocity(Vector2 pos, Vector2 to, float dist)
