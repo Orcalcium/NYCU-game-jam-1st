@@ -190,7 +190,23 @@ public class TimedDamageZone : MonoBehaviour
         IElementDamageable damageable = other.GetComponent<IElementDamageable>() ?? other.GetComponentInParent<IElementDamageable>();
         if (damageable == null) return;
 
-        if (!damageable.CanBeHitBy(elementType)) return;
+        // If the target is an EnemyShooter2D and the damage owner is a Player, replicate the enemy's
+        // hit logic here rather than calling an overload that may not exist on all implementations.
+        var enemy = other.GetComponent<EnemyShooter2D>() ?? other.GetComponentInParent<EnemyShooter2D>();
+        bool canBeHit = false;
+
+        if (enemy != null && damageOwner is PlayerController2D pc)
+        {
+            // EnemyShooter2D.CanBeHitBy(element, source) returns true when the player's current element
+            // matches the enemy's current element — emulate that logic here.
+            canBeHit = (pc.currentElement == enemy.currentElement);
+        }
+        else
+        {
+            canBeHit = damageable.CanBeHitBy(elementType);
+        }
+
+        if (!canBeHit) return;
 
         Debug.Log($"[TimedDamageZone] Hit {other.name} with {GameDefs.ElementToText(elementType)} for {damage} damage");
         damageable.TakeElementHit(elementType, damage, damageOwner);

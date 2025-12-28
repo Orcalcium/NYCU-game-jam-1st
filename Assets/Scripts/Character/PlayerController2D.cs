@@ -34,7 +34,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     [Header("State")]
     public ElementType currentElement = ElementType.Fire;
-    public int hp = 5;
+    public int hp = 3;
+    private int maxHp = 3;
 
     [Header("Visual")]
     public SpriteRenderer bodyRenderer;
@@ -95,9 +96,18 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         if (PlayerSkillCaster2D == null) PlayerSkillCaster2D = GetComponent<PlayerSkillCaster2D>();
 
+
         cycleIndex = GetCycleIndex(currentElement);
         currentElement = Cycle[cycleIndex];
         ApplyElementVisual();
+
+        maxHp = hp;
+        if (GameJam.UI.GameUIManager.Instance != null)
+        {
+            GameJam.UI.GameUIManager.Instance.maxHp = maxHp;
+            GameJam.UI.GameUIManager.Instance.UpdateHp(hp);
+            GameJam.UI.GameUIManager.Instance.ResetHpColors();
+        }
 
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
 
@@ -218,7 +228,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                 used = PlayerSkillCaster2D.CastBlink(origin, Vector2.right);
             }
 
-            if (used) CycleElementAfterSkill();
+            if (used)
+            {
+                CycleElementAfterSkill();
+            }
         }
     }
 
@@ -418,10 +431,19 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         return 0;
     }
 
+    /// <summary>
+    /// Cycle to the next element (for gameplay) and optionally override the visible character color to reflect a skill color.
+    /// The overrideColor, if provided, will be applied after the element visual so it takes precedence.
+    /// </summary>
+    /// <param name="overrideColor">Optional color to apply to the character after cycling element.</param>
     public void CycleElementAfterSkill()
     {
-        cycleIndex = (cycleIndex + 1) % Cycle.Length;
-        currentElement = Cycle[cycleIndex];
+        // Pick a random element different from the current one
+        List<ElementType> options = new List<ElementType>(Cycle);
+        options.Remove(currentElement);
+        int randIdx = Random.Range(0, options.Count);
+        currentElement = options[randIdx];
+        cycleIndex = GetCycleIndex(currentElement);
         ApplyElementVisual();
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
     }
@@ -437,7 +459,21 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     {
         if (!CanBeHitBy(element)) return;
 
+        int prevHp = hp;
         hp -= damage;
+        if (hp > maxHp || hp < 0)
+        {
+            Debug.LogWarning($"[Player] hp out of range after damage: prevHp={prevHp} damage={damage} rawHp={hp} clamping to 0..{maxHp}");
+            hp = Mathf.Clamp(hp, 0, maxHp);
+        }
+        else
+        {
+            Debug.Log($"[Player] TakeElementHit: element={element} damage={damage} prevHp={prevHp} newHp={hp}");
+        }
+        if (GameJam.UI.GameUIManager.Instance != null)
+        {
+            GameJam.UI.GameUIManager.Instance.UpdateHp(hp, element);
+        }
 
         if (hp <= 0)
         {
