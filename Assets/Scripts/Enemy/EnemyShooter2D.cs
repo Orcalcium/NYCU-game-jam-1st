@@ -23,7 +23,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public enum MoveTriggerMode { Always, MoveWhenCloserThan, MoveWhenFartherThan, MoveWhenBetween }
 
     [Header("Behavior")]
-    [Tooltip("Controls when the enemy will actively move relative to the target")] 
+    [Tooltip("Controls when the enemy will actively move relative to the target")]
     public MoveTriggerMode moveTrigger = MoveTriggerMode.Always;
     [Tooltip("Distance threshold for the MoveWhenCloserThan/MoveWhenFartherThan modes")]
     public float activationDistance = 6.0f;
@@ -31,6 +31,14 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
     public float activationMinDistance = 2.0f;
     [Tooltip("Maximum distance for MoveWhenBetween mode (exclusive)")]
     public float activationMaxDistance = 8.0f;
+
+    [Header("Wall Avoid")]
+    [Tooltip("Layers treated as walls/obstacles for movement avoidance")]
+    public LayerMask wallLayers;
+    [Tooltip("Extra cast padding beyond collider radius/extent")]
+    public float wallCastPadding = 0.03f;
+    [Tooltip("How far ahead to probe for a wall (scaled by speed and fixedDeltaTime)")]
+    public float wallProbeMultiplier = 1.25f;
 
     [Header("Shoot")]
     public new ParticleSystem particleSystem;
@@ -134,7 +142,6 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         Vector2 separationPush = ComputePositionPush(pos);
         if (separationPriority && separationPush.sqrMagnitude > (separationPriorityThreshold * separationPriorityThreshold))
         {
-            // Prioritize separation: move away from neighbors until the push weakens
             Vector2 sepVel = separationPush;
             float sepMaxSpd = (separationMaxSpeed > 0f) ? separationMaxSpeed : pushMaxSpeed;
             if (sepVel.sqrMagnitude > sepMaxSpd * sepMaxSpd) sepVel = sepVel.normalized * sepMaxSpd;
@@ -180,7 +187,102 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
         float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
         if (v.sqrMagnitude > maxSpd * maxSpd) v = v.normalized * maxSpd;
 
+        // Wall avoidance: if about to hit wall, choose another direction that increases distance from player
+        if (v.sqrMagnitude > 1e-8f && wallLayers.value != 0)
+        {
+            Vector2 velDir = v.normalized;
+            float probeDist = Mathf.Max(0.02f, v.magnitude * Time.fixedDeltaTime * wallProbeMultiplier);
+            if (WouldHitWall(pos, velDir, probeDist))
+            {
+                Vector2 away = (pos - tpos);
+                Vector2 awayDir = away.sqrMagnitude > 1e-8f ? away.normalized : (-velDir);
+
+                Vector2 altDir = PickBestUnblockedDir(pos, velDir, awayDir, probeDist);
+                if (altDir.sqrMagnitude > 1e-8f)
+                {
+                    v = altDir * v.magnitude;
+                }
+            }
+        }
+
         rb.linearVelocity = v;
+    }
+
+    bool WouldHitWall(Vector2 pos, Vector2 dir, float distance)
+    {
+        if (dir.sqrMagnitude < 1e-8f) return false;
+
+        float castRadius = GetCastRadius();
+        var hit = Physics2D.CircleCast(pos, castRadius, dir, distance + wallCastPadding, wallLayers);
+        return hit.collider != null;
+    }
+
+    float GetCastRadius()
+    {
+        if (col == null) return 0.2f;
+
+        if (col is CircleCollider2D cc)
+            return Mathf.Max(0.01f, cc.radius * Mathf.Max(transform.lossyScale.x, transform.lossyScale.y));
+
+        if (col is CapsuleCollider2D cap)
+        {
+            float sx = Mathf.Abs(transform.lossyScale.x);
+            float sy = Mathf.Abs(transform.lossyScale.y);
+            Vector2 size = cap.size;
+            float r = Mathf.Min(size.x * sx, size.y * sy) * 0.5f;
+            return Mathf.Max(0.01f, r);
+        }
+
+        if (col is BoxCollider2D bc)
+        {
+            float sx = Mathf.Abs(transform.lossyScale.x);
+            float sy = Mathf.Abs(transform.lossyScale.y);
+            Vector2 size = bc.size;
+            float r = Mathf.Min(size.x * sx, size.y * sy) * 0.5f;
+            return Mathf.Max(0.01f, r);
+        }
+
+        var b = col.bounds;
+        return Mathf.Max(0.01f, Mathf.Min(b.extents.x, b.extents.y));
+    }
+
+    Vector2 PickBestUnblockedDir(Vector2 pos, Vector2 currentDir, Vector2 awayDir, float probeDist)
+    {
+        // Try directions biased to "away from player" first, then slide options around currentDir.
+        Vector2 best = Vector2.zero;
+        float bestScore = float.NegativeInfinity;
+
+        Vector2 perp = new Vector2(-awayDir.y, awayDir.x);
+
+        Vector2[] candidates =
+        {
+            awayDir,
+            (awayDir + perp).normalized,
+            (awayDir - perp).normalized,
+            perp,
+            -perp,
+            (currentDir + perp).normalized,
+            (currentDir - perp).normalized,
+            -currentDir
+        };
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Vector2 d = candidates[i];
+            if (d.sqrMagnitude < 1e-8f) continue;
+            if (WouldHitWall(pos, d, probeDist)) continue;
+
+            // Score: prioritize moving away from player, lightly keep continuity with current direction.
+            float score = Vector2.Dot(d, awayDir) * 2.0f + Vector2.Dot(d, currentDir) * 0.35f;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = d;
+            }
+        }
+
+        return best;
     }
 
     Vector2 ComputePositionPush(Vector2 pos)
@@ -355,9 +457,10 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
 
     void OnValidate()
     {
-        // Ensure sensible ranges
         if (activationMinDistance < 0f) activationMinDistance = 0f;
         if (activationMaxDistance < 0f) activationMaxDistance = 0f;
         if (activationMaxDistance < activationMinDistance) activationMaxDistance = activationMinDistance;
+        if (wallProbeMultiplier < 0.1f) wallProbeMultiplier = 0.1f;
+        if (wallCastPadding < 0f) wallCastPadding = 0f;
     }
 }

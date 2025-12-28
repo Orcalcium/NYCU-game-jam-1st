@@ -54,7 +54,6 @@ public class PlayerSkillCaster2D : MonoBehaviour
     float nextBlinkTime;
     float nextAoeTime;
 
-    // ===== Added: cached cooldown ratios (updated in Update, read by UI/other scripts) =====
     [Header("Runtime Cooldown (0~1, remaining/cooldown)")]
     [SerializeField] private float pierceRemaining01;
     [SerializeField] private float blinkRemaining01;
@@ -74,8 +73,30 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
     readonly HashSet<int> _hitIds = new HashSet<int>();
 
-    const string LOG_PREFIX = "[PlayerSkillCaster2D]";
-    bool _loggedLayerConfigOnce;
+    // ===== Space Hold Blink (Indicator + Slow Time) =====
+    [Header("Space Hold Blink (Indicator + Slow Time)")]
+    [SerializeField, Range(0.02f, 1f)] private float spaceHoldTimeScale = 0.2f;
+
+    [Header("Blink Path Indicator")]
+    [SerializeField] private bool useBuiltInBlinkIndicator = true;
+    [SerializeField] private LineRenderer blinkLine;
+    [SerializeField] private SpriteRenderer blinkEndDot;
+    [SerializeField] private float blinkLineWidth = 0.08f;
+    [SerializeField] private float blinkEndDotScale = 0.25f;
+    [SerializeField] private int blinkIndicatorSortingOrder = 200;
+
+    public bool IsHoldingBlink => _holdingBlink;
+    public Vector2 BlinkIndicatorStart => _blinkIndicatorStart;
+    public Vector2 BlinkIndicatorEnd => _blinkIndicatorEnd;
+    public ElementType BlinkIndicatorElement => _blinkIndicatorElement;
+
+    bool _holdingBlink;
+    Vector2 _blinkIndicatorStart;
+    Vector2 _blinkIndicatorEnd;
+    ElementType _blinkIndicatorElement;
+
+    float _defaultFixedDeltaTime;
+    float _defaultTimeScale;
 
     void Reset()
     {
@@ -98,8 +119,11 @@ public class PlayerSkillCaster2D : MonoBehaviour
             else firePoint = transform;
         }
 
-        LogLayerConfigOnce("Awake");
-        LogRefs("Awake");
+        _defaultFixedDeltaTime = Time.fixedDeltaTime;
+        _defaultTimeScale = Time.timeScale;
+
+        EnsureBlinkIndicator();
+        SetBlinkIndicatorActive(false);
     }
 
     void Update()
@@ -109,6 +133,18 @@ public class PlayerSkillCaster2D : MonoBehaviour
         pierceRemaining01 = GetRemaining01(now, nextPierceTime, pierceCooldown);
         blinkRemaining01 = GetRemaining01(now, nextBlinkTime, blinkCooldown);
         aoeRemaining01 = GetRemaining01(now, nextAoeTime, aoeCooldown);
+
+        HandleSpaceHoldBlink();
+    }
+
+    void OnDisable()
+    {
+        if (_holdingBlink)
+        {
+            _holdingBlink = false;
+            RestoreTimeScale();
+            SetBlinkIndicatorActive(false);
+        }
     }
 
     static float GetRemaining01(float now, float nextTime, float cd)
@@ -116,11 +152,6 @@ public class PlayerSkillCaster2D : MonoBehaviour
         if (cd <= 0f) return 0f;
         float rem = Mathf.Max(0f, nextTime - now);
         return Mathf.Clamp01(rem / cd);
-    }
-
-    void OnValidate()
-    {
-        LogLayerConfigOnce("OnValidate");
     }
 
     public SkillType GetCurrentSkill() => currentSkill;
@@ -138,24 +169,18 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
     public void CycleSkill()
     {
-        var before = currentSkill;
         currentSkill = currentSkill switch
         {
             SkillType.PierceShot => SkillType.BlinkSlash,
             SkillType.BlinkSlash => SkillType.AoEBlast,
             _ => SkillType.PierceShot
         };
-        Debug.Log($"{LOG_PREFIX} CycleSkill: {before} -> {currentSkill}", this);
     }
 
     public Vector2 GetMouseWorldClamped(Vector2 origin)
     {
         if (!targetCamera) targetCamera = Camera.main;
-        if (Mouse.current == null || targetCamera == null)
-        {
-            Debug.LogWarning($"{LOG_PREFIX} GetMouseWorldClamped: Mouse or Camera missing. origin={origin}", this);
-            return origin + Vector2.right;
-        }
+        if (Mouse.current == null || targetCamera == null) return origin + Vector2.right;
 
         Vector2 mousePos = Mouse.current.position.ReadValue();
         Vector3 w = targetCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, 0f));
@@ -176,12 +201,7 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
     public void CastCurrent(Vector2 origin, Vector2 dir)
     {
-        if (dir.sqrMagnitude <= 0.0001f)
-            Debug.LogWarning($"{LOG_PREFIX} CastCurrent: dir is near zero. origin={origin}", this);
-
         ElementType elemBeforeCast = GetPlayerElement();
-
-        Debug.Log($"{LOG_PREFIX} CastCurrent: skill={currentSkill}, elem={elemBeforeCast}, origin={origin}, dir={dir}, time={Time.time:F3}", this);
 
         bool casted = currentSkill switch
         {
@@ -191,37 +211,21 @@ public class PlayerSkillCaster2D : MonoBehaviour
             _ => false
         };
 
-        Debug.Log($"{LOG_PREFIX} CastCurrent result: casted={casted}", this);
-
         if (casted && player != null)
             player.CycleElementAfterSkill();
     }
 
     bool TryCastPierce(Vector2 origin, Vector2 dir, ElementType elem)
     {
-        if (Time.time < nextPierceTime)
-        {
-            Debug.Log($"{LOG_PREFIX} TryCastPierce blocked by cooldown. now={Time.time:F3} next={nextPierceTime:F3}", this);
-            return false;
-        }
+        if (Time.time < nextPierceTime) return false;
         nextPierceTime = Time.time + pierceCooldown;
 
-        if (bulletPool == null || firePoint == null)
-        {
-            Debug.LogError($"{LOG_PREFIX} TryCastPierce missing refs. bulletPool={(bulletPool ? "OK" : "NULL")} firePoint={(firePoint ? "OK" : "NULL")}", this);
-            return false;
-        }
+        if (bulletPool == null || firePoint == null) return false;
 
         var bulletGO = bulletPool.Spawn(origin, dir, player.currentElement, player);
-        if (bulletGO == null)
-        {
-            Debug.LogError($"{LOG_PREFIX} TryCastPierce bulletPool.Spawn returned NULL", this);
-            return false;
-        }
+        if (bulletGO == null) return false;
 
         bulletGO.transform.position = firePoint.position;
-
-        Debug.Log($"{LOG_PREFIX} TryCastPierce spawned bullet='{bulletGO.name}' at {firePoint.position}, elem={elem}, dmg={pierceDamage}, speed={pierceBulletSpeed}", bulletGO);
 
         var eb = bulletGO.GetComponent<ElementBullet>();
         if (eb != null)
@@ -230,21 +234,12 @@ public class PlayerSkillCaster2D : MonoBehaviour
             eb.canPierceUnits = true;
             eb.maxPierceHits = pierceMaxHits;
             eb.Init(bulletPool, firePoint.position, dir, elem, player != null ? (UnityEngine.Object)player : this, pierceBulletSpeed, true, pierceMaxHits);
-            Debug.Log($"{LOG_PREFIX} TryCastPierce used ElementBullet.Init (ElementBullet found).", bulletGO);
             return true;
         }
 
         bulletGO.transform.rotation = Quaternion.FromToRotation(Vector3.right, new Vector3(dir.x, dir.y, 0f));
         var rb2d = bulletGO.GetComponent<Rigidbody2D>();
-        if (rb2d != null)
-        {
-            rb2d.linearVelocity = dir * pierceBulletSpeed;
-            Debug.Log($"{LOG_PREFIX} TryCastPierce set bullet Rigidbody2D.linearVelocity={rb2d.linearVelocity}", bulletGO);
-        }
-        else
-        {
-            Debug.LogWarning($"{LOG_PREFIX} TryCastPierce bullet has no Rigidbody2D.", bulletGO);
-        }
+        if (rb2d != null) rb2d.linearVelocity = dir * pierceBulletSpeed;
 
         TrySetFieldOrProperty(bulletGO, "currentElement", elem);
         TrySetFieldOrProperty(bulletGO, "element", elem);
@@ -252,29 +247,17 @@ public class PlayerSkillCaster2D : MonoBehaviour
         TrySetFieldOrProperty(bulletGO, "canPierceUnits", true);
         TrySetFieldOrProperty(bulletGO, "maxPierceHits", pierceMaxHits);
 
-        Debug.LogWarning($"{LOG_PREFIX} TryCastPierce: ElementBullet component NOT found, so damage will depend on the bullet's own collision script. bullet='{bulletGO.name}'", bulletGO);
-
         return true;
     }
 
     public bool SpawnPierceImmediate(Vector2 origin, Vector2 dir, ElementType elem)
     {
-        if (bulletPool == null || firePoint == null)
-        {
-            Debug.LogError($"{LOG_PREFIX} SpawnPierceImmediate missing refs. bulletPool={(bulletPool ? "OK" : "NULL")} firePoint={(firePoint ? "OK" : "NULL")}", this);
-            return false;
-        }
+        if (bulletPool == null || firePoint == null) return false;
 
         var bulletGO = bulletPool.Spawn(origin, dir, elem, player);
-        if (bulletGO == null)
-        {
-            Debug.LogError($"{LOG_PREFIX} SpawnPierceImmediate bulletPool.Spawn returned NULL", this);
-            return false;
-        }
+        if (bulletGO == null) return false;
 
         bulletGO.transform.position = firePoint.position;
-
-        Debug.Log($"{LOG_PREFIX} SpawnPierceImmediate spawned bullet='{bulletGO.name}' at {firePoint.position}, elem={elem}, dmg={pierceDamage}, speed={pierceBulletSpeed}", bulletGO);
 
         var eb = bulletGO.GetComponent<ElementBullet>();
         if (eb != null)
@@ -283,21 +266,12 @@ public class PlayerSkillCaster2D : MonoBehaviour
             eb.canPierceUnits = true;
             eb.maxPierceHits = pierceMaxHits;
             eb.Init(bulletPool, firePoint.position, dir, elem, player != null ? (UnityEngine.Object)player : this, pierceBulletSpeed, true, pierceMaxHits);
-            Debug.Log($"{LOG_PREFIX} SpawnPierceImmediate used ElementBullet.Init (ElementBullet found).", bulletGO);
             return true;
         }
 
         bulletGO.transform.rotation = Quaternion.FromToRotation(Vector3.right, new Vector3(dir.x, dir.y, 0f));
         var rb2d = bulletGO.GetComponent<Rigidbody2D>();
-        if (rb2d != null)
-        {
-            rb2d.linearVelocity = dir * pierceBulletSpeed;
-            Debug.Log($"{LOG_PREFIX} SpawnPierceImmediate set bullet Rigidbody2D.linearVelocity={rb2d.linearVelocity}", bulletGO);
-        }
-        else
-        {
-            Debug.LogWarning($"{LOG_PREFIX} SpawnPierceImmediate bullet has no Rigidbody2D.", bulletGO);
-        }
+        if (rb2d != null) rb2d.linearVelocity = dir * pierceBulletSpeed;
 
         TrySetFieldOrProperty(bulletGO, "currentElement", elem);
         TrySetFieldOrProperty(bulletGO, "element", elem);
@@ -310,28 +284,21 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
     bool TryCastBlink(Vector2 origin, Vector2 dir, ElementType elem)
     {
-        if (Time.time < nextBlinkTime)
-        {
-            Debug.Log($"{LOG_PREFIX} TryCastBlink blocked by cooldown. now={Time.time:F3} next={nextBlinkTime:F3}", this);
-            return false;
-        }
+        if (_holdingBlink) return false;
+        if (Keyboard.current != null && Keyboard.current.spaceKey != null && Keyboard.current.spaceKey.isPressed) return false;
+
+        if (Time.time < nextBlinkTime) return false;
         nextBlinkTime = Time.time + blinkCooldown;
 
         UnityEngine.Object source = player != null ? (UnityEngine.Object)player : this;
 
         Vector2 start = rb ? rb.position : (Vector2)transform.position;
-
-        RaycastHit2D wallHit = Physics2D.Raycast(start, dir, blinkMaxDistance, obstacleLayers);
-        Vector2 end = wallHit.collider ? wallHit.point - dir * 0.05f : (start + dir * blinkMaxDistance);
-
-        Debug.Log($"{LOG_PREFIX} TryCastBlink: start={start} end={end} dir={dir} wallHit={(wallHit.collider ? wallHit.collider.name : "none")} obstacleMask={LayerMaskToString(obstacleLayers)} damageMask={LayerMaskToString(damageLayers)}", this);
+        Vector2 end = ComputeBlinkEnd(start, dir);
 
         _hitIds.Clear();
 
         float castDist = Vector2.Distance(start, end);
         RaycastHit2D[] hits = Physics2D.CircleCastAll(start, blinkHitRadius, dir, castDist, damageLayers);
-
-        Debug.Log($"{LOG_PREFIX} TryCastBlink CircleCastAll: radius={blinkHitRadius} dist={castDist:F3} hits={hits.Length}", this);
 
         for (int i = 0; i < hits.Length; i++)
         {
@@ -343,14 +310,7 @@ public class PlayerSkillCaster2D : MonoBehaviour
             _hitIds.Add(id);
 
             var targetGO = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
-
-            Debug.Log($"{LOG_PREFIX} TryCastBlink hit[{i}]: collider='{c.name}' targetGO='{targetGO.name}' layer={LayerName(targetGO.layer)} isTrigger={c.isTrigger}", c);
-
-            if (!IsSameElementTarget(targetGO, elem))
-            {
-                Debug.Log($"{LOG_PREFIX} TryCastBlink skip (element mismatch or missing element) target='{targetGO.name},'", targetGO);
-                continue;
-            }
+            if (!IsSameElementTarget(targetGO, elem)) continue;
 
             ApplyElementDamage_ExactInterface(targetGO, c, elem, blinkDamage, source);
         }
@@ -363,11 +323,7 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
     bool TryCastAoe(Vector2 origin, Vector2 dir, ElementType elem)
     {
-        if (Time.time < nextAoeTime)
-        {
-            Debug.Log($"{LOG_PREFIX} TryCastAoe blocked by cooldown. now={Time.time:F3} next={nextAoeTime:F3}", this);
-            return false;
-        }
+        if (Time.time < nextAoeTime) return false;
         nextAoeTime = Time.time + aoeCooldown;
 
         UnityEngine.Object source = player != null ? (UnityEngine.Object)player : this;
@@ -381,8 +337,6 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
         Collider2D[] cols = Physics2D.OverlapCircleAll(aim, aoeRadius, damageLayers);
 
-        Debug.Log($"{LOG_PREFIX} TryCastAoe: casterPos={casterPos} aim={aim} radius={aoeRadius} found={cols.Length} damageMask={LayerMaskToString(damageLayers)}", this);
-
         _hitIds.Clear();
 
         for (int i = 0; i < cols.Length; i++)
@@ -395,14 +349,7 @@ public class PlayerSkillCaster2D : MonoBehaviour
             _hitIds.Add(id);
 
             var targetGO = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
-
-            Debug.Log($"{LOG_PREFIX} TryCastAoe overlap[{i}]: collider='{c.name}' targetGO='{targetGO.name}' layer={LayerName(targetGO.layer)} isTrigger={c.isTrigger}", c);
-
-            if (!IsSameElementTarget(targetGO, elem))
-            {
-                Debug.Log($"{LOG_PREFIX} TryCastAoe skip (element mismatch or missing element) target='{targetGO.name}'", targetGO);
-                continue;
-            }
+            if (!IsSameElementTarget(targetGO, elem)) continue;
 
             ApplyElementDamage_ExactInterface(targetGO, c, elem, aoeDamage, source);
         }
@@ -410,14 +357,218 @@ public class PlayerSkillCaster2D : MonoBehaviour
         return true;
     }
 
+    // ===== Space Hold Blink Implementation =====
+    void HandleSpaceHoldBlink()
+    {
+        if (Keyboard.current == null) return;
+        var space = Keyboard.current.spaceKey;
+        if (space == null) return;
+
+        if (space.wasPressedThisFrame)
+            BeginSpaceBlinkHold();
+
+        if (_holdingBlink)
+            UpdateSpaceBlinkHold();
+
+        if (space.wasReleasedThisFrame)
+            EndSpaceBlinkHoldAndCast();
+    }
+
+    void BeginSpaceBlinkHold()
+    {
+        _holdingBlink = true;
+
+        Vector2 start = rb ? rb.position : (Vector2)transform.position;
+        _blinkIndicatorStart = start;
+        _blinkIndicatorElement = GetPlayerElement();
+
+        ApplyTimeScale(spaceHoldTimeScale);
+        SetBlinkIndicatorActive(true);
+
+        UpdateSpaceBlinkHold();
+    }
+
+    void UpdateSpaceBlinkHold()
+    {
+        Vector2 start = rb ? rb.position : (Vector2)transform.position;
+        _blinkIndicatorStart = start;
+        _blinkIndicatorElement = GetPlayerElement();
+
+        Vector2 aim = GetMouseWorldClamped(start);
+        Vector2 delta = aim - start;
+
+        Vector2 dir = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector2.right;
+        Vector2 end = ComputeBlinkEnd(start, dir);
+
+        _blinkIndicatorEnd = end;
+
+        UpdateBlinkIndicatorVisuals(start, end, _blinkIndicatorElement);
+    }
+
+    void EndSpaceBlinkHoldAndCast()
+    {
+        if (!_holdingBlink) return;
+
+        _holdingBlink = false;
+        RestoreTimeScale();
+        SetBlinkIndicatorActive(false);
+
+        Vector2 start = rb ? rb.position : (Vector2)transform.position;
+
+        Vector2 aim = GetMouseWorldClamped(start);
+        Vector2 delta = aim - start;
+        if (delta.sqrMagnitude <= 0.0001f) return;
+
+        Vector2 dir = delta.normalized;
+
+        ElementType elem = GetPlayerElement();
+
+        bool casted = TryCastBlink(start, dir, elem);
+
+        if (casted && player != null)
+            player.CycleElementAfterSkill();
+    }
+
+    Vector2 ComputeBlinkEnd(Vector2 start, Vector2 dir)
+    {
+        RaycastHit2D wallHit = Physics2D.Raycast(start, dir, blinkMaxDistance, obstacleLayers);
+        return wallHit.collider ? (wallHit.point - dir * 0.05f) : (start + dir * blinkMaxDistance);
+    }
+
+    void ApplyTimeScale(float scale)
+    {
+        _defaultTimeScale = Time.timeScale;
+        _defaultFixedDeltaTime = Time.fixedDeltaTime;
+
+        float s = Mathf.Clamp(scale, 0.01f, 1f);
+        Time.timeScale = s;
+        Time.fixedDeltaTime = _defaultFixedDeltaTime * s;
+    }
+
+    void RestoreTimeScale()
+    {
+        Time.timeScale = _defaultTimeScale <= 0f ? 1f : _defaultTimeScale;
+        Time.fixedDeltaTime = _defaultFixedDeltaTime <= 0f ? 0.02f : _defaultFixedDeltaTime;
+    }
+
+    // ===== Built-in Indicator (Line + End Dot) =====
+    void EnsureBlinkIndicator()
+    {
+        if (!useBuiltInBlinkIndicator) return;
+
+        if (blinkLine == null)
+        {
+            var go = new GameObject("BlinkIndicator_Line");
+            go.transform.SetParent(transform, false);
+
+            blinkLine = go.AddComponent<LineRenderer>();
+            blinkLine.useWorldSpace = true;
+            blinkLine.positionCount = 2;
+            blinkLine.numCapVertices = 4;
+            blinkLine.numCornerVertices = 4;
+            blinkLine.startWidth = blinkLineWidth;
+            blinkLine.endWidth = blinkLineWidth;
+
+            var mat = new Material(Shader.Find("Sprites/Default"));
+            blinkLine.material = mat;
+            blinkLine.sortingOrder = blinkIndicatorSortingOrder;
+            blinkLine.enabled = false;
+        }
+
+        if (blinkEndDot == null)
+        {
+            var go = new GameObject("BlinkIndicator_EndDot");
+            go.transform.SetParent(transform, false);
+
+            blinkEndDot = go.AddComponent<SpriteRenderer>();
+            blinkEndDot.sprite = CreateWhiteDotSprite();
+            blinkEndDot.sortingOrder = blinkIndicatorSortingOrder + 1;
+            blinkEndDot.enabled = false;
+        }
+    }
+
+    void SetBlinkIndicatorActive(bool active)
+    {
+        if (!useBuiltInBlinkIndicator) return;
+
+        EnsureBlinkIndicator();
+
+        if (blinkLine != null) blinkLine.enabled = active;
+        if (blinkEndDot != null) blinkEndDot.enabled = active;
+
+        if (!active && blinkLine != null)
+        {
+            blinkLine.SetPosition(0, Vector3.zero);
+            blinkLine.SetPosition(1, Vector3.zero);
+        }
+    }
+
+    void UpdateBlinkIndicatorVisuals(Vector2 start, Vector2 end, ElementType elem)
+    {
+        if (!useBuiltInBlinkIndicator) return;
+
+        EnsureBlinkIndicator();
+
+        Color c = ElementToColor(elem);
+
+        if (blinkLine != null)
+        {
+            blinkLine.startWidth = blinkLineWidth;
+            blinkLine.endWidth = blinkLineWidth;
+            blinkLine.startColor = c;
+            blinkLine.endColor = c;
+            blinkLine.SetPosition(0, new Vector3(start.x, start.y, 0f));
+            blinkLine.SetPosition(1, new Vector3(end.x, end.y, 0f));
+        }
+
+        if (blinkEndDot != null)
+        {
+            blinkEndDot.color = c;
+            blinkEndDot.transform.position = new Vector3(end.x, end.y, 0f);
+            blinkEndDot.transform.localScale = Vector3.one * blinkEndDotScale;
+        }
+    }
+
+    static Color ElementToColor(ElementType elem)
+    {
+        switch (elem)
+        {
+            case ElementType.Fire: return new Color(1f, 0.35f, 0.2f, 1f);
+            case ElementType.Water: return new Color(0.25f, 0.6f, 1f, 1f);
+            case ElementType.Nature: return new Color(0.25f, 1f, 0.4f, 1f);
+            default: return Color.white;
+        }
+    }
+
+    static Sprite CreateWhiteDotSprite()
+    {
+        var tex = new Texture2D(16, 16, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Bilinear;
+
+        Color clear = new Color(1f, 1f, 1f, 0f);
+        Color white = new Color(1f, 1f, 1f, 1f);
+
+        for (int y = 0; y < 16; y++)
+        {
+            for (int x = 0; x < 16; x++)
+            {
+                float u = (x + 0.5f) / 16f * 2f - 1f;
+                float v = (y + 0.5f) / 16f * 2f - 1f;
+                float r2 = u * u + v * v;
+                tex.SetPixel(x, y, r2 <= 1f ? white : clear);
+            }
+        }
+        tex.Apply();
+
+        return Sprite.Create(tex, new Rect(0, 0, 16, 16), new Vector2(0.5f, 0.5f), 16f);
+    }
+
     bool IsSameElementTarget(GameObject go, ElementType playerElem)
     {
         if (go == null) return false;
-
         if (TryGetElement(go, out ElementType targetElem))
             return targetElem.Equals(playerElem);
-
-        Debug.LogWarning($"{LOG_PREFIX} IsSameElementTarget: target='{go.name}' has NO element field/property found (currentElement/element).", go);
         return false;
     }
 
@@ -449,55 +600,23 @@ public class PlayerSkillCaster2D : MonoBehaviour
 
         var dmg = hitCollider ? hitCollider.GetComponentInParent<IElementDamageable>() : null;
         if (dmg == null) dmg = targetGO.GetComponentInParent<IElementDamageable>();
-        if (dmg == null)
-        {
-            Debug.LogWarning($"{LOG_PREFIX} ApplyElementDamage: NO IElementDamageable found. targetGO='{targetGO.name}' collider='{(hitCollider ? hitCollider.name : "null")}'", targetGO);
-            return;
-        }
+        if (dmg == null) return;
 
-        bool canHit = false;
-        try
-        {
-            canHit = dmg.CanBeHitBy(element);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"{LOG_PREFIX} ApplyElementDamage: CanBeHitBy threw. targetGO='{targetGO.name}' err={e}", targetGO);
-            return;
-        }
-
-        Debug.Log($"{LOG_PREFIX} ApplyElementDamage: targetGO='{targetGO.name}' dmgType='{dmg.GetType().Name}' element={element} damage={damage} source={(source ? source.name : "null")} CanBeHitBy={canHit}", targetGO);
+        bool canHit;
+        try { canHit = dmg.CanBeHitBy(element); }
+        catch { return; }
 
         if (canHit)
         {
-            try
-            {
-                dmg.TakeElementHit(element, damage, source);
-                Debug.Log($"{LOG_PREFIX} ApplyElementDamage: TakeElementHit OK. targetGO='{targetGO.name}'", targetGO);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"{LOG_PREFIX} ApplyElementDamage: TakeElementHit threw. targetGO='{targetGO.name}' err={e}", targetGO);
-            }
+            try { dmg.TakeElementHit(element, damage, source); } catch { }
             return;
         }
 
         var enemy = (dmg as Component) ? (dmg as Component).GetComponentInParent<EnemyShooter2D>() : null;
         if (enemy != null && enemy.currentElement == element)
         {
-            try
-            {
-                dmg.TakeElementHit(element, damage, source);
-                Debug.Log($"{LOG_PREFIX} ApplyElementDamage: Fallback EnemyShooter2D element match. TakeElementHit OK. targetGO='{targetGO.name}'", targetGO);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"{LOG_PREFIX} ApplyElementDamage: Fallback TakeElementHit threw. targetGO='{targetGO.name}' err={e}", targetGO);
-            }
-            return;
+            try { dmg.TakeElementHit(element, damage, source); } catch { }
         }
-
-        Debug.LogWarning($"{LOG_PREFIX} ApplyElementDamage: blocked. CanBeHitBy=false and no EnemyShooter2D element-match fallback. targetGO='{targetGO.name}'", targetGO);
     }
 
     bool TryGetFieldOrProperty(object obj, string name, out object value)
@@ -546,82 +665,20 @@ public class PlayerSkillCaster2D : MonoBehaviour
         var f = t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         if (f != null && (value == null || f.FieldType.IsAssignableFrom(value.GetType()) || f.FieldType.IsEnum))
         {
-            try
-            {
-                f.SetValue(obj, value);
-                Debug.Log($"{LOG_PREFIX} TrySetFieldOrProperty: set {t.Name}.{name} (field) = {value}");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"{LOG_PREFIX} TrySetFieldOrProperty: failed set field {t.Name}.{name}: {e.Message}");
-            }
+            try { f.SetValue(obj, value); } catch { }
             return;
         }
 
         var p = t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         if (p != null && p.CanWrite && (value == null || p.PropertyType.IsAssignableFrom(value.GetType()) || p.PropertyType.IsEnum))
         {
-            try
-            {
-                p.SetValue(obj, value);
-                Debug.Log($"{LOG_PREFIX} TrySetFieldOrProperty: set {t.Name}.{name} (prop) = {value}");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"{LOG_PREFIX} TrySetFieldOrProperty: failed set prop {t.Name}.{name}: {e.Message}");
-            }
+            try { p.SetValue(obj, value); } catch { }
         }
     }
 
     public bool CastPierce(Vector2 origin, Vector2 dir) => TryCastPierce(origin, dir, GetPlayerElement());
     public bool CastBlink(Vector2 origin, Vector2 dir) => TryCastBlink(origin, dir, GetPlayerElement());
     public bool CastAoe(Vector2 origin) => TryCastAoe(origin, Vector2.zero, GetPlayerElement());
-
-    void LogLayerConfigOnce(string from)
-    {
-        if (_loggedLayerConfigOnce) return;
-        _loggedLayerConfigOnce = true;
-
-        Debug.Log($"{LOG_PREFIX} {from} LayerMasks: damageLayers={LayerMaskToString(damageLayers)} obstacleLayers={LayerMaskToString(obstacleLayers)}", this);
-
-        int playerLayer = gameObject.layer;
-        Debug.Log($"{LOG_PREFIX} {from} Player layer='{LayerName(playerLayer)}'({playerLayer})", this);
-
-        if (damageLayers.value == 0)
-            Debug.LogWarning($"{LOG_PREFIX} damageLayers is EMPTY (value=0). Overlap/Cast will never find targets.", this);
-
-        if (obstacleLayers.value == 0)
-            Debug.LogWarning($"{LOG_PREFIX} obstacleLayers is EMPTY (value=0). Blink raycast will ignore walls.", this);
-    }
-
-    void LogRefs(string from)
-    {
-        Debug.Log($"{LOG_PREFIX} {from} Refs: player={(player ? "OK" : "NULL")} rb={(rb ? "OK" : "NULL")} firePoint={(firePoint ? "OK" : "NULL")} bulletPool={(bulletPool ? "OK" : "NULL")} cam={(targetCamera ? "OK" : "NULL")}", this);
-    }
-
-    static string LayerMaskToString(LayerMask mask)
-    {
-        if (mask.value == 0) return $"0 (None)";
-
-        List<string> names = new List<string>();
-        for (int i = 0; i < 32; i++)
-        {
-            int bit = 1 << i;
-            if ((mask.value & bit) != 0)
-            {
-                string n = LayerMask.LayerToName(i);
-                if (string.IsNullOrEmpty(n)) n = $"Layer{i}";
-                names.Add($"{n}({i})");
-            }
-        }
-        return $"{mask.value} [{string.Join(", ", names)}]";
-    }
-
-    static string LayerName(int layer)
-    {
-        string n = LayerMask.LayerToName(layer);
-        return string.IsNullOrEmpty(n) ? $"Layer{layer}" : n;
-    }
 
     [Serializable]
     public struct ElementDamagePacket

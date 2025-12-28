@@ -143,6 +143,11 @@ MonoBehaviour:
   activationDistance: 6
   activationMinDistance: 5
   activationMaxDistance: 20
+  wallLayers:
+    serializedVersion: 2
+    m_Bits: 8192
+  wallCastPadding: 0.03
+  wallProbeMultiplier: 1.25
   particleSystem: {fileID: 0}
   particleDamage: 1
   currentElement: 0

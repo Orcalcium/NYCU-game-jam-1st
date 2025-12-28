@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using GameJam.Common;
 
 [RequireComponent(typeof(Rigidbody2D))]
@@ -54,6 +55,19 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     public float indicatorLineWidth = 0.06f;
     public int indicatorCircleSegments = 48;
 
+    [Header("Element Cycle (3-Bag + UI)")]
+    [Tooltip("UI icon for current element")]
+    public Image elementNowUI;
+    [Tooltip("UI icon for next element")]
+    public Image elementNext1UI;
+    [Tooltip("UI icon for next-next element")]
+    public Image elementNext2UI;
+
+    [Tooltip("Optional sprites. If not assigned, UI will use element color.")]
+    public Sprite fireSprite;
+    public Sprite waterSprite;
+    public Sprite natureSprite;
+
     Rigidbody2D rb;
     Camera cam;
     Collider2D col;
@@ -72,7 +86,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     public PlayerSkillCaster2D PlayerSkillCaster2D;
 
     static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
-    int cycleIndex;
+
+    // 3-bag like Tetris: each bag contains all 3 elements exactly once, shuffled.
+    readonly List<ElementType> bag = new List<ElementType>(3);
+    int bagPos;
 
     bool isAimingSkill;
     float baseFixedDeltaTime;
@@ -95,9 +112,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         if (PlayerSkillCaster2D == null) PlayerSkillCaster2D = GetComponent<PlayerSkillCaster2D>();
 
-        cycleIndex = GetCycleIndex(currentElement);
-        currentElement = Cycle[cycleIndex];
+        InitElementBagWithCurrentAsFirst();
+        currentElement = bag[bagPos];
         ApplyElementVisual();
+        UpdateElementQueueUI();
 
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
 
@@ -175,11 +193,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         // Left click -> shoot bullet (Pierce Shot) - automatic while held, respects fireCooldown
         if (Mouse.current.leftButton.isPressed && fireCd <= 0f && !isBursting)
         {
-            // capture aim and element at burst start
             Vector2 burstDir = dir.sqrMagnitude > 0.0001f ? dir : Vector2.right;
             ElementType burstElem = currentElement;
 
-            fireCd = fireCooldown; // set cooldown between bursts
+            fireCd = fireCooldown;
             StartCoroutine(BurstFire(origin, burstDir, burstElem));
         }
 
@@ -210,13 +227,9 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         {
             bool used = false;
             if (dir.sqrMagnitude > 0.0001f)
-            {
                 used = PlayerSkillCaster2D.CastBlink(origin, dir);
-            }
             else
-            {
                 used = PlayerSkillCaster2D.CastBlink(origin, Vector2.right);
-            }
 
             if (used) CycleElementAfterSkill();
         }
@@ -246,11 +259,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                     return;
                 }
 
-                Vector2 dir = toTarget.normalized;
+                Vector2 d = toTarget.normalized;
                 float castDist = Mathf.Min(remain, stepDist);
-                DashDamageAlongPath(cur, dir, castDist);
+                DashDamageAlongPath(cur, d, castDist);
 
-                rb.linearVelocity = dir * dashSpeed;
+                rb.linearVelocity = d * dashSpeed;
                 rb.position = ClampPos(rb.position);
                 return;
             }
@@ -310,9 +323,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             if (dmg is EnemyShooter2D enemy)
             {
                 if (enemy.currentElement == currentElement)
-                {
                     dmg.TakeElementHit(currentElement, dashDamage, this);
-                }
             }
         }
     }
@@ -345,7 +356,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     {
         if (Keyboard.current == null) return;
 
-        // Primary movement dash moved to Left Shift to avoid conflict with Blink (Space)
         if (Keyboard.current.leftShiftKey.wasPressedThisFrame)
         {
             if (dashCd > 0f) return;
@@ -411,19 +421,96 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         bodyRenderer.color = GameDefs.ElementToColor(currentElement);
     }
 
-    int GetCycleIndex(ElementType e)
-    {
-        for (int i = 0; i < Cycle.Length; i++)
-            if (Cycle[i] == e) return i;
-        return 0;
-    }
-
     public void CycleElementAfterSkill()
     {
-        cycleIndex = (cycleIndex + 1) % Cycle.Length;
-        currentElement = Cycle[cycleIndex];
+        bagPos++;
+
+        if (bagPos >= bag.Count)
+        {
+            RefillBagShuffled();
+            bagPos = 0;
+        }
+
+        currentElement = bag[bagPos];
         ApplyElementVisual();
+        UpdateElementQueueUI();
         EnemyPoolManager.Instance?.OnPlayerElementChanged(currentElement);
+    }
+
+    void InitElementBagWithCurrentAsFirst()
+    {
+        RefillBagShuffled();
+
+        int idx = bag.IndexOf(currentElement);
+        if (idx < 0) idx = 0;
+
+        if (idx != 0)
+        {
+            // rotate so currentElement is first, keeping the other two in their shuffled order
+            ElementType a = bag[0];
+            ElementType b = bag[1];
+            ElementType c = bag[2];
+
+            if (idx == 1)
+            {
+                bag[0] = b; bag[1] = c; bag[2] = a;
+            }
+            else if (idx == 2)
+            {
+                bag[0] = c; bag[1] = a; bag[2] = b;
+            }
+        }
+
+        bagPos = 0;
+    }
+
+    void RefillBagShuffled()
+    {
+        bag.Clear();
+        bag.AddRange(Cycle);
+
+        // Fisher-Yates shuffle
+        for (int i = bag.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            ElementType tmp = bag[i];
+            bag[i] = bag[j];
+            bag[j] = tmp;
+        }
+    }
+
+    void UpdateElementQueueUI()
+    {
+        if (bag.Count == 0) return;
+
+        ElementType now = bag[Mathf.Clamp(bagPos, 0, bag.Count - 1)];
+        ElementType next1 = bag[(bagPos + 1) % bag.Count];
+        ElementType next2 = bag[(bagPos + 2) % bag.Count];
+
+        ApplyElementUI(elementNowUI, now);
+        ApplyElementUI(elementNext1UI, next1);
+        ApplyElementUI(elementNext2UI, next2);
+    }
+
+    void ApplyElementUI(Image img, ElementType e)
+    {
+        if (img == null) return;
+
+        Sprite s = null;
+        if (e == ElementType.Fire) s = fireSprite;
+        else if (e == ElementType.Water) s = waterSprite;
+        else if (e == ElementType.Nature) s = natureSprite;
+
+        if (s != null)
+        {
+            img.sprite = s;
+            img.color = Color.white;
+        }
+        else
+        {
+            img.sprite = null;
+            img.color = GameDefs.ElementToColor(e);
+        }
     }
 
     public bool CanBeHitBy(ElementType element)
@@ -472,7 +559,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         indicatorLR.endWidth = indicatorLineWidth;
         indicatorLR.numCapVertices = 8;
 
-        // Ensure the LineRenderer has a visible material for 2D (Sprites/Default)
         var mat = new Material(Shader.Find("Sprites/Default"));
         mat.hideFlags = HideFlags.DontSave;
         indicatorLR.material = mat;
@@ -498,7 +584,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         indicatorLR.startColor = c;
         indicatorLR.endColor = c;
 
-        // If the player is actively aiming (right-click hold), show AoE indicator
         var skill = isAimingSkill ? PlayerSkillCaster2D.SkillType.AoEBlast : PlayerSkillCaster2D.GetCurrentSkill();
 
         if (skill == PlayerSkillCaster2D.SkillType.AoEBlast)
@@ -561,15 +646,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
             if (fired) anyFired = true;
 
-            // Wait between burst shots; respects timeScale (use WaitForSecondsRealtime if you want to ignore timeScale)
             if (i < burstCount - 1)
                 yield return new WaitForSeconds(burstInterval);
         }
 
         if (anyFired)
-        {
             CycleElementAfterSkill();
-        }
 
         isBursting = false;
     }
