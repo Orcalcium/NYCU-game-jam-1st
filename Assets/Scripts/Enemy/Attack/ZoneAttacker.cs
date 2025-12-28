@@ -138,6 +138,15 @@ public class ZoneAttacker : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns whether this attacker is currently attacking.
+    /// Used by EnemyShooter2D to adapt movement (e.g., Rampage charging behavior).
+    /// </summary>
+    public bool IsAttacking()
+    {
+        return isAttacking;
+    }
+
+    /// <summary>
     /// Manually spawn a zone at the target position.
     /// </summary>
     public void SpawnZone()

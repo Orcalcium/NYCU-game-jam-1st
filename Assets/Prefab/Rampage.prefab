@@ -146,6 +146,10 @@ MonoBehaviour:
   activationDistance: 6
   activationMinDistance: 2
   activationMaxDistance: 8
+  movementMode: 1
+  randomMoveSpeed: 2
+  randomChangeIntervalMin: 0.5
+  randomChangeIntervalMax: 1.5
   particleSystem: {fileID: 0}
   particleDamage: 1
   currentElement: 0

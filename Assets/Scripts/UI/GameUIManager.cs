@@ -61,9 +61,14 @@ namespace GameJam.UI
                     // If this HP point was just lost, update its color
                     if (!shouldShow && lastDamageElement.HasValue)
                     {
-                        var img = hpPoints[i].GetComponent<UnityEngine.UI.Image>();
-                        Debug.Log($"[UI] HP index {i} lost; img={(img == null ? "null" : "found")}");
-                        if (img != null)
+                        // Support Buttons and other UI Graphic types (Image/RawImage/Text)
+                        UnityEngine.UI.Graphic graphic = null;
+                        var btn = hpPoints[i].GetComponent<UnityEngine.UI.Button>();
+                        if (btn != null && btn.image != null) graphic = btn.image;
+                        if (graphic == null) graphic = hpPoints[i].GetComponent<UnityEngine.UI.Graphic>();
+                        if (graphic == null) graphic = hpPoints[i].GetComponentInChildren<UnityEngine.UI.Graphic>(true);
+                        Debug.Log($"[UI] HP index {i} lost; graphic={(graphic == null ? "null" : graphic.GetType().Name)} (button={(btn == null ? "none" : "found")})");
+                        if (graphic != null)
                         {
                             Color elementColor = GameDefs.ElementToColor(lastDamageElement.Value);
                             Color newColor = new Color(
@@ -73,7 +78,7 @@ namespace GameJam.UI
                                 1f
                             );
                             Debug.Log($"[UI] Setting color of HP index {i} to {newColor}");
-                            img.color = newColor;
+                            graphic.color = newColor;
                         }
                     }
                     hpPoints[i].SetActive(shouldShow);
