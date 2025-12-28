@@ -295,33 +295,7 @@ public class EnemyShooter2D : MonoBehaviour, IElementDamageable
             desired = Vector2.zero;
         }
 
-        Vector2 v = desired * moveSpeed;
-
-        // Add small push to avoid overlaps while moving (non-priority)
-        v += separationPush;
-
-        float maxSpd = Mathf.Max(moveSpeed, pushMaxSpeed);
-        if (v.sqrMagnitude > maxSpd * maxSpd) v = v.normalized * maxSpd;
-
-        // Wall avoidance: if about to hit wall, choose another direction that increases distance from player
-        if (v.sqrMagnitude > 1e-8f && wallLayers.value != 0)
-        {
-            Vector2 velDir = v.normalized;
-            float probeDist = Mathf.Max(0.02f, v.magnitude * Time.fixedDeltaTime * wallProbeMultiplier);
-            if (WouldHitWall(pos, velDir, probeDist))
-            {
-                Vector2 away = (pos - tpos);
-                Vector2 awayDir = away.sqrMagnitude > 1e-8f ? away.normalized : (-velDir);
-
-                Vector2 altDir = PickBestUnblockedDir(pos, velDir, awayDir, probeDist);
-                if (altDir.sqrMagnitude > 1e-8f)
-                {
-                    v = altDir * v.magnitude;
-                }
-            }
-        }
-
-        return v;
+        return desired * moveSpeed;
     }
 
     bool WouldHitWall(Vector2 pos, Vector2 dir, float distance)
