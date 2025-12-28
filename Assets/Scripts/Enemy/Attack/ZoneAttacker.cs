@@ -27,6 +27,9 @@ public class ZoneAttacker : MonoBehaviour
     [Tooltip("Offset from target position (if needed)")]
     public Vector3 spawnOffset = Vector3.zero;
 
+    [Tooltip("Random spawn radius around the player (0 = spawn directly on player)")]
+    public float spawnRadius = 3f;
+
     [Tooltip("Auto-start attacking on enable")]
     public bool autoStart = true;
 
@@ -158,6 +161,19 @@ public class ZoneAttacker : MonoBehaviour
         }
 
         Vector3 targetPosition = enemyShooter.target.position + spawnOffset;
+        
+        // Apply random circular offset using radius and angle
+        if (spawnRadius > 0f)
+        {
+            float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float randomDistance = Random.Range(0f, spawnRadius);
+            
+            float offsetX = Mathf.Cos(randomAngle) * randomDistance;
+            float offsetY = Mathf.Sin(randomAngle) * randomDistance;
+            
+            targetPosition += new Vector3(offsetX, offsetY, 0f);
+        }
+        
         SpawnZoneAt(targetPosition);
     }
 
@@ -195,13 +211,36 @@ public class ZoneAttacker : MonoBehaviour
     {
         if (enemyShooter == null || enemyShooter.target == null) return;
 
-        Gizmos.color = Color.red;
         Vector3 spawnPos = enemyShooter.target.position + spawnOffset;
+        
+        // Draw spawn radius circle
+        if (spawnRadius > 0f)
+        {
+            Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
+            DrawCircle(spawnPos, spawnRadius, 32);
+        }
+        
+        // Draw center point
+        Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(spawnPos, 0.5f);
 
         // Draw line from enemy to spawn position
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(transform.position, spawnPos);
+    }
+
+    private void DrawCircle(Vector3 center, float radius, int segments)
+    {
+        float angleStep = 360f / segments;
+        Vector3 prevPoint = center + new Vector3(radius, 0f, 0f);
+
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = i * angleStep * Mathf.Deg2Rad;
+            Vector3 newPoint = center + new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
+            Gizmos.DrawLine(prevPoint, newPoint);
+            prevPoint = newPoint;
+        }
     }
 #endif
 }
