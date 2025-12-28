@@ -109,7 +109,7 @@ BoxCollider2D:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 4160
   m_LayerOverridePriority: 0
   m_ForceSendLayers:
     serializedVersion: 2
@@ -217,5 +217,5 @@ MonoBehaviour:
   elementType: 2
   targetMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 12215
   zoneCollider: {fileID: 2708629218127011292}

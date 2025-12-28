@@ -28,7 +28,7 @@ public class ZoneAttacker : MonoBehaviour
     public Vector3 spawnOffset = Vector3.zero;
 
     [Tooltip("Random spawn radius around the player (0 = spawn directly on player)")]
-    public float spawnRadius = 3f;
+    public float spawnRadius = 2f;
 
     [Tooltip("Auto-start attacking on enable")]
     public bool autoStart = true;
@@ -166,10 +166,9 @@ public class ZoneAttacker : MonoBehaviour
         if (spawnRadius > 0f)
         {
             float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-            float randomDistance = Random.Range(0f, spawnRadius);
             
-            float offsetX = Mathf.Cos(randomAngle) * randomDistance;
-            float offsetY = Mathf.Sin(randomAngle) * randomDistance;
+            float offsetX = Mathf.Cos(randomAngle) * spawnRadius;
+            float offsetY = Mathf.Sin(randomAngle) * spawnRadius;
             
             targetPosition += new Vector3(offsetX, offsetY, 0f);
         }

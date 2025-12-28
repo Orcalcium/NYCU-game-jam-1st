@@ -31,9 +31,6 @@ public class EnemyPoolManager : MonoBehaviour
     
     [Tooltip("Multiplier for enemy start threshold (enemy spawns when low >= startThreshold * ratio)")]
     public float startThresholdRatio = 1.0f;
-    
-    [Tooltip("Maximum total difficulty allowed on field")]
-    public int maxTotalDifficulty = 50;
 
     [Header("Wave Spawning")]
     [Tooltip("How many spawn attempts per wave")]
@@ -214,13 +211,6 @@ public class EnemyPoolManager : MonoBehaviour
             EnemyShooter2D selectedPrefab = SelectRandomEnemy(eligible);
             
             if (selectedPrefab == null) continue;
-            
-            // Check if spawning would exceed max difficulty
-            if (currentDifficulty + selectedPrefab.difficulty > maxTotalDifficulty)
-            {
-                Debug.Log($"[EnemyPoolManager] Would exceed max difficulty ({maxTotalDifficulty}), stopping wave");
-                break;
-            }
             
             // Try to spawn
             if (TrySpawnEnemy(selectedPrefab))

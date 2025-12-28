@@ -1246,7 +1246,7 @@ MonoBehaviour:
   baseDifficultyHigh: 10
   difficultyGrowthRate: 0.5
   startThresholdRatio: 0.5
-  maxTotalDifficulty: 50
+  maxTotalDifficulty: -1
   waveSpawnAttempts: 5
   waveRandomness: 0.3
   waveCheckInterval: 2

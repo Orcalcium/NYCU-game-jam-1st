@@ -252,4 +252,5 @@ MonoBehaviour:
   poolMaxSize: 10
   attackInterval: 3
   spawnOffset: {x: 0, y: 0, z: 0}
+  spawnRadius: 3
   autoStart: 1
