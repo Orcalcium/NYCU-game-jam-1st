@@ -1,4 +1,5 @@
 // File: Player/PlayerController2D.cs
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -26,6 +27,10 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     public Transform firePoint;
     public float bulletSpeed = 14f;
     public float fireCooldown = 0.12f;
+    [Tooltip("Number of bullets in one burst")]
+    public int burstCount = 3;
+    [Tooltip("Time between bullets inside a burst (seconds)")]
+    public float burstInterval = 0.05f;
 
     [Header("State")]
     public ElementType currentElement = ElementType.Fire;
@@ -57,6 +62,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     float dashCd;
     float fireCd;
     bool invulnerable;
+    bool isBursting;
 
     Vector2 dashDir;
     Vector2 dashStartPos;
@@ -167,23 +173,14 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         if (dir.sqrMagnitude > 1e-6f) dir.Normalize();
 
         // Left click -> shoot bullet (Pierce Shot) - automatic while held, respects fireCooldown
-        if (Mouse.current.leftButton.isPressed && fireCd <= 0f)
+        if (Mouse.current.leftButton.isPressed && fireCd <= 0f && !isBursting)
         {
-            bool fired = false;
-            if (dir.sqrMagnitude > 0.0001f)
-            {
-                fired = PlayerSkillCaster2D.CastPierce(origin, dir);
-            }
-            else
-            {
-                fired = PlayerSkillCaster2D.CastPierce(origin, Vector2.right);
-            }
+            // capture aim and element at burst start
+            Vector2 burstDir = dir.sqrMagnitude > 0.0001f ? dir : Vector2.right;
+            ElementType burstElem = currentElement;
 
-            if (fired)
-            {
-                CycleElementAfterSkill();
-                fireCd = fireCooldown;
-            }
+            fireCd = fireCooldown; // set cooldown between bursts
+            StartCoroutine(BurstFire(origin, burstDir, burstElem));
         }
 
         // Right click -> AoE Blast (press to aim, release to cast)
@@ -538,5 +535,42 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             float y = center.y + Mathf.Sin(ang) * radius;
             indicatorLR.SetPosition(i, new Vector3(x, y, 0f));
         }
+    }
+
+    IEnumerator BurstFire(Vector2 origin, Vector2 dir, ElementType elem)
+    {
+        isBursting = true;
+        bool anyFired = false;
+
+        for (int i = 0; i < burstCount; i++)
+        {
+            bool fired = false;
+            if (PlayerSkillCaster2D != null)
+            {
+                fired = PlayerSkillCaster2D.SpawnPierceImmediate(origin, dir, elem);
+            }
+            else if (bulletPool != null)
+            {
+                var b = bulletPool.Spawn(origin, dir, elem, this, bulletSpeed);
+                if (b != null)
+                {
+                    b.damage = 1;
+                    fired = true;
+                }
+            }
+
+            if (fired) anyFired = true;
+
+            // Wait between burst shots; respects timeScale (use WaitForSecondsRealtime if you want to ignore timeScale)
+            if (i < burstCount - 1)
+                yield return new WaitForSeconds(burstInterval);
+        }
+
+        if (anyFired)
+        {
+            CycleElementAfterSkill();
+        }
+
+        isBursting = false;
     }
 }
