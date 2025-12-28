@@ -32,82 +32,84 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
     [Header("Shoot (Left Click)")]
     public BulletPool bulletPool;
-        void StartBlinking()
-        {
-            if (blinkCoroutine != null)
-            {
-                StopCoroutine(blinkCoroutine);
-            }
-            blinkCoroutine = StartCoroutine(BlinkCoroutine());
-        }
+    public Transform firePoint;
+    public float bulletSpeed = 14f;
+    public float fireCooldown = 0.12f;
+    [Tooltip("Number of bullets in one burst")]
+    public int burstCount = 3;
+    [Tooltip("Time between bullets inside a burst (seconds)")]
+    public float burstInterval = 0.05f;
 
-        void StopBlinking()
-        {
-            if (blinkCoroutine != null)
-            {
-                StopCoroutine(blinkCoroutine);
-                blinkCoroutine = null;
-            }
+    [Header("State")]
+    public ElementType currentElement = ElementType.Fire;
+    public int hp = 3;
+    private int maxHp = 3;
 
-            // Ensure sprite is fully visible
-            if (bodyRenderer != null)
-            {
-                Color c = bodyRenderer.color;
-                c.a = 1f;
-                bodyRenderer.color = c;
-            }
-        }
+    [Header("Invincibility")]
+    [Tooltip("Duration of invincibility after taking damage (seconds)")]
+    public float invinciblePeriod = 1.5f;
+    [Tooltip("Animation curve for alpha fade during invincibility (0 = transparent, 1 = opaque)")]
+    public AnimationCurve blinkCurve = AnimationCurve.Linear(0, 1, 1, 1);
 
-        IEnumerator BlinkCoroutine()
-        {
-            float elapsed = 0f;
+    [Header("Visual")]
+    public SpriteRenderer bodyRenderer;
 
-            while (invincibleTimer > 0f)
-            {
-                elapsed += Time.deltaTime;
-            
-                // Normalize time to 0-1 range based on total invincible period
-                float t = elapsed / invinciblePeriod;
-            
-                // Evaluate curve to get alpha value
-                float alpha = blinkCurve.Evaluate(t);
-            
-                // Apply alpha while preserving RGB
-                if (bodyRenderer != null)
-                {
-                    Color c = bodyRenderer.color;
-                    c.a = Mathf.Clamp01(alpha);
-                    bodyRenderer.color = c;
-                }
+    [Header("Camera")]
+    public float cameraDamping = 1f;
+    public float cameraOrthoSize = 8f;
+    [Tooltip("If enabled, Player will automatically configure Main Camera to follow the player at Awake(). Disabled by default so you can assign/adjust the camera manually.")]
+    public bool autoSetupCamera = false;
 
-                yield return null;
-            }
+    [Header("Clamp (World Bounds)")]
+    public float clampX = 13.5f;
+    public float clampY = 7.5f;
 
-            // Ensure sprite is fully visible when done
-            if (bodyRenderer != null)
-            {
-                Color c = bodyRenderer.color;
-                c.a = 1f;
-                bodyRenderer.color = c;
-            }
+    [Header("Skill Aim (Slow Time + Indicator)")]
+    public float aimTimeScale = 0.15f;
+    public float indicatorLineWidth = 0.06f;
+    public int indicatorCircleSegments = 48;
 
-            blinkCoroutine = null;
-        }
+    [Header("Element Cycle (3-Bag + UI)")]
+    [Tooltip("Which element cycling behavior to use after a skill / burst.")]
+    public ElementCycleMode elementCycleMode = ElementCycleMode.Bag3;
 
-        /// <summary>
-        /// Heal the player by 'amount' hit points (clamped to maxHp) and update the UI.
-        /// </summary>
-        public void Heal(int amount)
-        {
-            if (amount <= 0) return;
-            int prevHp = hp;
-            hp = Mathf.Clamp(hp + amount, 0, maxHp);
-            if (GameJam.UI.GameUIManager.Instance != null)
-            {
-                GameJam.UI.GameUIManager.Instance.UpdateHp(hp);
-            }
-            Debug.Log($"[Player] Healed: +{(hp - prevHp)} hp (now {hp}/{maxHp})");
-        }
+    [Tooltip("UI icon for current element")]
+    public Image elementNowUI;
+    [Tooltip("UI icon for next element")]
+    public Image elementNext1UI;
+    [Tooltip("UI icon for next-next element")]
+    public Image elementNext2UI;
+    // (No serialized element queue - use default shuffled Bag3 behavior)
+
+    [Tooltip("Optional sprites. If not assigned, UI will use element color.")]
+    public Sprite fireSprite;
+    public Sprite waterSprite;
+    public Sprite natureSprite;
+
+    Rigidbody2D rb;
+    Camera cam;
+    Collider2D col;
+
+    float dashTimer;
+    float dashCd;
+    float fireCd;
+    [SerializeField]
+    bool invulnerable;
+    bool isBursting;
+    float invincibleTimer;
+    Coroutine blinkCoroutine;
+
+    Vector2 dashDir;
+    Vector2 dashStartPos;
+    Vector2 dashTargetPos;
+    bool dashUseTarget;
+
+    public PlayerSkillCaster2D PlayerSkillCaster2D;
+
+    static readonly ElementType[] Cycle = { ElementType.Fire, ElementType.Water, ElementType.Nature };
+
+    // Kept for compatibility with the other branch��s logic (index-tracking),
+    // even though the bag mode is the default cycle behavior.
     int cycleIndex;
 
     // 3-bag like Tetris: each bag contains all 3 elements exactly once, shuffled.
@@ -651,7 +653,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         }
     }
 
-<<<<<<< HEAD
     void StartBlinking()
     {
         if (blinkCoroutine != null)
@@ -713,7 +714,7 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
 
         blinkCoroutine = null;
     }
-=======
+
     /// <summary>
     /// Heal the player by 'amount' hit points (clamped to maxHp) and update the UI.
     /// </summary>
@@ -728,8 +729,6 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         }
         Debug.Log($"[Player] Healed: +{(hp - prevHp)} hp (now {hp}/{maxHp})");
     }
-
->>>>>>> 6b42ab7 (feat: Add Healpack and HealpackSpawner functionality with healing mechanics and spawn logic)
     void ApplyAimSlowTime(bool enabled)
     {
         if (enabled)
