@@ -161,30 +161,63 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         if (Mouse.current == null) return;
         if (PlayerSkillCaster2D == null) return;
 
+        Vector2 origin = (firePoint ? (Vector2)firePoint.position : rb.position);
+        Vector2 aimWorld = PlayerSkillCaster2D.GetMouseWorldClamped(origin);
+        Vector2 dir = aimWorld - origin;
+        if (dir.sqrMagnitude > 1e-6f) dir.Normalize();
+
+        // Left click -> shoot bullet (Pierce Shot)
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            PlayerSkillCaster2D.CycleSkill();
+            bool fired = false;
+            if (dir.sqrMagnitude > 0.0001f)
+            {
+                fired = PlayerSkillCaster2D.CastPierce(origin, dir);
+            }
+            else
+            {
+                fired = PlayerSkillCaster2D.CastPierce(origin, Vector2.right);
+            }
+
+            if (fired) CycleElementAfterSkill();
+        }
+
+        // Right click -> AoE Blast (press to aim, release to cast)
+        if (Mouse.current.rightButton.wasPressedThisFrame)
+        {
             isAimingSkill = true;
             ApplyAimSlowTime(true);
             SetIndicatorEnabled(true);
             UpdateSkillIndicator();
         }
 
-        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        if (Mouse.current.rightButton.wasReleasedThisFrame)
         {
-            if (!isAimingSkill) return;
+            if (isAimingSkill)
+            {
+                isAimingSkill = false;
+                ApplyAimSlowTime(false);
+                SetIndicatorEnabled(false);
 
-            isAimingSkill = false;
-            ApplyAimSlowTime(false);
-            SetIndicatorEnabled(false);
+                bool casted = PlayerSkillCaster2D.CastAoe(origin);
+                if (casted) CycleElementAfterSkill();
+            }
+        }
 
-            Vector2 origin = (firePoint ? (Vector2)firePoint.position : rb.position);
-            Vector2 aimWorld = PlayerSkillCaster2D.GetMouseWorldClamped(origin);
-            Vector2 dir = aimWorld - origin;
-            if (dir.sqrMagnitude < 0.0001f) return;
-            dir.Normalize();
+        // Space -> Blink Slash (dash attack)
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            bool used = false;
+            if (dir.sqrMagnitude > 0.0001f)
+            {
+                used = PlayerSkillCaster2D.CastBlink(origin, dir);
+            }
+            else
+            {
+                used = PlayerSkillCaster2D.CastBlink(origin, Vector2.right);
+            }
 
-            PlayerSkillCaster2D.CastCurrent(origin, dir);
+            if (used) CycleElementAfterSkill();
         }
     }
 
@@ -311,7 +344,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     {
         if (Keyboard.current == null) return;
 
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        // Primary movement dash moved to Left Shift to avoid conflict with Blink (Space)
+        if (Keyboard.current.leftShiftKey.wasPressedThisFrame)
         {
             if (dashCd > 0f) return;
 
@@ -436,6 +470,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         indicatorLR.startWidth = indicatorLineWidth;
         indicatorLR.endWidth = indicatorLineWidth;
         indicatorLR.numCapVertices = 8;
+
+        // Ensure the LineRenderer has a visible material for 2D (Sprites/Default)
+        var mat = new Material(Shader.Find("Sprites/Default"));
+        mat.hideFlags = HideFlags.DontSave;
+        indicatorLR.material = mat;
+        indicatorLR.sortingOrder = 1000;
     }
 
     void SetIndicatorEnabled(bool enabled)
@@ -457,7 +497,8 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         indicatorLR.startColor = c;
         indicatorLR.endColor = c;
 
-        var skill = PlayerSkillCaster2D.GetCurrentSkill();
+        // If the player is actively aiming (right-click hold), show AoE indicator
+        var skill = isAimingSkill ? PlayerSkillCaster2D.SkillType.AoEBlast : PlayerSkillCaster2D.GetCurrentSkill();
 
         if (skill == PlayerSkillCaster2D.SkillType.AoEBlast)
         {

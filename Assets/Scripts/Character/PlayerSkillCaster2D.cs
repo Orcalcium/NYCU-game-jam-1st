@@ -73,6 +73,15 @@ public class PlayerSkillCaster2D : MonoBehaviour
         if (!player) player = GetComponent<PlayerController2D>();
         if (!targetCamera) targetCamera = Camera.main;
 
+        // Ensure we have a valid fire point: prefer a child named FirePoint, then player's firePoint, else default to this transform
+        if (firePoint == null)
+        {
+            var child = transform.Find("FirePoint");
+            if (child != null) firePoint = child;
+            else if (player != null && player.firePoint != null) firePoint = player.firePoint;
+            else firePoint = transform;
+        }
+
         LogLayerConfigOnce("Awake");
         LogRefs("Awake");
     }
@@ -479,6 +488,23 @@ public class PlayerSkillCaster2D : MonoBehaviour
                 Debug.LogWarning($"{LOG_PREFIX} TrySetFieldOrProperty: failed set prop {t.Name}.{name}: {e.Message}");
             }
         }
+    }
+
+    // Public wrappers so external input handlers can invoke specific skills directly
+    public bool CastPierce(Vector2 origin, Vector2 dir)
+    {
+        return TryCastPierce(origin, dir, GetPlayerElement());
+    }
+
+    public bool CastBlink(Vector2 origin, Vector2 dir)
+    {
+        return TryCastBlink(origin, dir, GetPlayerElement());
+    }
+
+    public bool CastAoe(Vector2 origin)
+    {
+        // TryCastAoe ignores dir and uses mouse; pass Vector2.zero for dir
+        return TryCastAoe(origin, Vector2.zero, GetPlayerElement());
     }
 
     void LogLayerConfigOnce(string from)
