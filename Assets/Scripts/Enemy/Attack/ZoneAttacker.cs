@@ -1,0 +1,198 @@
+using UnityEngine;
+using UnityEngine.Pool;
+using GameJam.Common;
+
+/// <summary>
+/// Spawns timed damage zones on top of the target position repeatedly.
+/// Requires EnemyShooter2D to get target information.
+/// </summary>
+[RequireComponent(typeof(EnemyShooter2D))]
+public class ZoneAttacker : MonoBehaviour
+{
+    [Header("Zone Prefab")]
+    [Tooltip("Prefab of the TimedDamageZone to spawn")]
+    public TimedDamageZone zonePrefab;
+
+    [Header("Pool Settings")]
+    [Tooltip("Initial pool capacity")]
+    public int poolCapacity = 5;
+
+    [Tooltip("Maximum pool size")]
+    public int poolMaxSize = 10;
+
+    [Header("Attack Settings")]
+    [Tooltip("Time between zone spawns")]
+    public float attackInterval = 2f;
+
+    [Tooltip("Offset from target position (if needed)")]
+    public Vector3 spawnOffset = Vector3.zero;
+
+    [Tooltip("Auto-start attacking on enable")]
+    public bool autoStart = true;
+
+    private EnemyShooter2D enemyShooter;
+    private ObjectPool<TimedDamageZone> zonePool;
+    private float attackTimer;
+    private bool isAttacking;
+
+    void Awake()
+    {
+        enemyShooter = GetComponent<EnemyShooter2D>();
+
+        if (enemyShooter == null)
+        {
+            Debug.LogError($"[ZoneAttacker] No EnemyShooter2D found on {gameObject.name}");
+            enabled = false;
+            return;
+        }
+
+        if (zonePrefab == null)
+        {
+            Debug.LogError($"[ZoneAttacker] No zone prefab assigned on {gameObject.name}");
+            enabled = false;
+            return;
+        }
+
+        InitializePool();
+    }
+
+    void OnEnable()
+    {
+        if (autoStart)
+        {
+            StartAttacking();
+        }
+    }
+
+    void OnDisable()
+    {
+        StopAttacking();
+    }
+
+    void InitializePool()
+    {
+        zonePool = new ObjectPool<TimedDamageZone>(
+            createFunc: CreateZone,
+            actionOnGet: OnGetZone,
+            actionOnRelease: OnReleaseZone,
+            actionOnDestroy: OnDestroyZone,
+            collectionCheck: true,
+            defaultCapacity: poolCapacity,
+            maxSize: poolMaxSize
+        );
+    }
+
+    private TimedDamageZone CreateZone()
+    {
+        TimedDamageZone zone = Instantiate(zonePrefab);
+        zone.gameObject.SetActive(false);
+        return zone;
+    }
+
+    private void OnGetZone(TimedDamageZone zone)
+    {
+        zone.gameObject.SetActive(true);
+    }
+
+    private void OnReleaseZone(TimedDamageZone zone)
+    {
+        zone.gameObject.SetActive(false);
+    }
+
+    private void OnDestroyZone(TimedDamageZone zone)
+    {
+        if (zone != null)
+        {
+            Destroy(zone.gameObject);
+        }
+    }
+
+    void Update()
+    {
+        if (!isAttacking) return;
+
+        attackTimer -= Time.deltaTime;
+
+        if (attackTimer <= 0f)
+        {
+            SpawnZone();
+            attackTimer = attackInterval;
+        }
+    }
+
+    /// <summary>
+    /// Start attacking (spawning zones on target).
+    /// </summary>
+    public void StartAttacking()
+    {
+        isAttacking = true;
+        attackTimer = 0f; // Spawn immediately on start
+    }
+
+    /// <summary>
+    /// Stop attacking.
+    /// </summary>
+    public void StopAttacking()
+    {
+        isAttacking = false;
+    }
+
+    /// <summary>
+    /// Manually spawn a zone at the target position.
+    /// </summary>
+    public void SpawnZone()
+    {
+        if (enemyShooter.target == null)
+        {
+            Debug.LogWarning($"[ZoneAttacker] No target assigned to EnemyShooter2D on {gameObject.name}");
+            return;
+        }
+
+        Vector3 targetPosition = enemyShooter.target.position + spawnOffset;
+        SpawnZoneAt(targetPosition);
+    }
+
+    /// <summary>
+    /// Spawn a zone at a specific position.
+    /// </summary>
+    public void SpawnZoneAt(Vector3 position)
+    {
+        TimedDamageZone zone = zonePool.Get();
+
+        if (zone != null)
+        {
+            zone.Activate(
+                position,
+                enemyShooter.currentElement,
+                enemyShooter,
+                OnZoneComplete
+            );
+        }
+    }
+
+    private void OnZoneComplete(TimedDamageZone zone)
+    {
+        zonePool.Release(zone);
+    }
+
+    void OnDestroy()
+    {
+        // Clean up pool
+        zonePool?.Clear();
+    }
+
+#if UNITY_EDITOR
+    void OnDrawGizmosSelected()
+    {
+        if (enemyShooter == null || enemyShooter.target == null) return;
+
+        Gizmos.color = Color.red;
+        Vector3 spawnPos = enemyShooter.target.position + spawnOffset;
+        Gizmos.DrawWireSphere(spawnPos, 0.5f);
+
+        // Draw line from enemy to spawn position
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(transform.position, spawnPos);
+    }
+#endif
+}
