@@ -45,6 +45,12 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     public int hp = 3;
     private int maxHp = 3;
 
+    [Header("Invincibility")]
+    [Tooltip("Duration of invincibility after taking damage (seconds)")]
+    public float invinciblePeriod = 1.5f;
+    [Tooltip("Animation curve for alpha fade during invincibility (0 = transparent, 1 = opaque)")]
+    public AnimationCurve blinkCurve = AnimationCurve.Linear(0, 1, 1, 1);
+
     [Header("Visual")]
     public SpriteRenderer bodyRenderer;
 
@@ -86,8 +92,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     float dashTimer;
     float dashCd;
     float fireCd;
+    [SerializeField]
     bool invulnerable;
     bool isBursting;
+    float invincibleTimer;
+    Coroutine blinkCoroutine;
 
     Vector2 dashDir;
     Vector2 dashStartPos;
@@ -180,6 +189,17 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         if (dashCd > 0f) dashCd -= Time.deltaTime;
         if (fireCd > 0f) fireCd -= Time.deltaTime;
 
+        // Update invincibility timer
+        if (invincibleTimer > 0f)
+        {
+            invincibleTimer -= Time.deltaTime;
+            if (invincibleTimer <= 0f)
+            {
+                invulnerable = false;
+                StopBlinking();
+            }
+        }
+
         if (GameJam.UI.GameUIManager.Instance != null)
         {
             float progress = 1f;
@@ -195,7 +215,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             dashTimer -= Time.deltaTime;
             if (dashTimer <= 0f)
             {
-                invulnerable = false;
+                // Only disable invulnerable if not in damage invincibility period
+                if (invincibleTimer <= 0f)
+                {
+                    invulnerable = false;
+                }
                 if (col != null) col.enabled = true;
             }
         }
@@ -282,7 +306,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                     rb.position = ClampPos(dashTargetPos);
                     rb.linearVelocity = Vector2.zero;
                     dashTimer = 0f;
-                    invulnerable = false;
+                    // Only disable invulnerable if not in damage invincibility period
+                    if (invincibleTimer <= 0f)
+                    {
+                        invulnerable = false;
+                    }
                     if (col != null) col.enabled = true;
                     return;
                 }
@@ -302,7 +330,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
                 {
                     rb.linearVelocity = Vector2.zero;
                     dashTimer = 0f;
-                    invulnerable = false;
+                    // Only disable invulnerable if not in damage invincibility period
+                    if (invincibleTimer <= 0f)
+                    {
+                        invulnerable = false;
+                    }
                     if (col != null) col.enabled = true;
                     return;
                 }
@@ -446,7 +478,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
     void ApplyElementVisual()
     {
         if (bodyRenderer == null) return;
-        bodyRenderer.color = GameDefs.ElementToColor(currentElement);
+        
+        // Preserve current alpha, only change RGB
+        Color currentColor = bodyRenderer.color;
+        Color elementColor = GameDefs.ElementToColor(currentElement);
+        bodyRenderer.color = new Color(elementColor.r, elementColor.g, elementColor.b, currentColor.a);
     }
 
     int GetCycleIndex(ElementType e)
@@ -584,6 +620,11 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
             hp = Mathf.Clamp(hp, 0, maxHp);
         }
 
+        // Start invincibility period and blinking
+        invulnerable = true;
+        invincibleTimer = invinciblePeriod;
+        StartBlinking();
+
         if (GameJam.UI.GameUIManager.Instance != null)
         {
             GameJam.UI.GameUIManager.Instance.UpdateHp(hp, element);
@@ -593,6 +634,68 @@ public class PlayerController2D : MonoBehaviour, IElementDamageable
         {
             SceneManager.LoadScene("DeadMenu");
         }
+    }
+
+    void StartBlinking()
+    {
+        if (blinkCoroutine != null)
+        {
+            StopCoroutine(blinkCoroutine);
+        }
+        blinkCoroutine = StartCoroutine(BlinkCoroutine());
+    }
+
+    void StopBlinking()
+    {
+        if (blinkCoroutine != null)
+        {
+            StopCoroutine(blinkCoroutine);
+            blinkCoroutine = null;
+        }
+
+        // Ensure sprite is fully visible
+        if (bodyRenderer != null)
+        {
+            Color c = bodyRenderer.color;
+            c.a = 1f;
+            bodyRenderer.color = c;
+        }
+    }
+
+    IEnumerator BlinkCoroutine()
+    {
+        float elapsed = 0f;
+
+        while (invincibleTimer > 0f)
+        {
+            elapsed += Time.deltaTime;
+            
+            // Normalize time to 0-1 range based on total invincible period
+            float t = elapsed / invinciblePeriod;
+            
+            // Evaluate curve to get alpha value
+            float alpha = blinkCurve.Evaluate(t);
+            
+            // Apply alpha while preserving RGB
+            if (bodyRenderer != null)
+            {
+                Color c = bodyRenderer.color;
+                c.a = Mathf.Clamp01(alpha);
+                bodyRenderer.color = c;
+            }
+
+            yield return null;
+        }
+
+        // Ensure sprite is fully visible when done
+        if (bodyRenderer != null)
+        {
+            Color c = bodyRenderer.color;
+            c.a = 1f;
+            bodyRenderer.color = c;
+        }
+
+        blinkCoroutine = null;
     }
     void ApplyAimSlowTime(bool enabled)
     {
