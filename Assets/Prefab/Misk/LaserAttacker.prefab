@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7072186229287814233
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9202489008533776562}
+  - component: {fileID: 6513431553319940773}
+  m_Layer: 0
+  m_Name: LaserAttacker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9202489008533776562
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7072186229287814233}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6092757024062185617}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6513431553319940773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7072186229287814233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7940eb12c2957574a89a36a73ccdd802, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LaserAttacker
+  damageZone: {fileID: 6262650509474465027}
+  attackInterval: 2
+  autoStart: 1
+  trackTarget: 1
+  rotatingTransform: {fileID: 9202489008533776562}
+--- !u!1001 &248194843316336751
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 9202489008533776562}
+    m_Modifications:
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 11
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6746703799387847733, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+      propertyPath: m_Name
+      value: Laser
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+--- !u!4 &6092757024062185617 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6339962023145249022, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+  m_PrefabInstance: {fileID: 248194843316336751}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6262650509474465027 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6167860628188904812, guid: ac35d764ac6840043b01aa892b8960ee, type: 3}
+  m_PrefabInstance: {fileID: 248194843316336751}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71ece1d77a2f32c4aa70c78f7703c425, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TimedDamageZone

@@ -43,6 +43,7 @@ public class TimedDamageZone : MonoBehaviour
     [Tooltip("Layer mask for targets that can be damaged")]
     public LayerMask targetMask = -1;
 
+    [SerializeField]
     private Collider2D zoneCollider;
     private Color baseColor;
     private MaterialPropertyBlock propertyBlock;
